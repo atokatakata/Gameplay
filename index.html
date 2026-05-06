@@ -3,93 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>JS SURVIVOR - ULTIMATE COMPLETE EDITION</title>
+    <title>JS SURVIVOR - SKILL UPDATE</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #05050a; font-family: sans-serif; touch-action: none; color: white; user-select: none; }
+        body { margin: 0; overflow: hidden; background-color: #050510; font-family: sans-serif; touch-action: none; color: white; user-select: none; }
         canvas { display: block; }
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.85); z-index: 20; }
         .hidden { display: none !important; }
-        h1 { font-size: 36px; color: #00ffcc; text-shadow: 0 0 15px #00ffcc; text-align: center;}
-        h2 { color: #ffcc00; }
-        button, select, input { font-size: 16px; padding: 10px 20px; margin: 5px; border-radius: 6px; background: #111; color: white; border: 2px solid #555; cursor: pointer; transition: 0.2s; }
-        button:hover { border-color: #00ffcc; box-shadow: 0 0 10px #00ffcc; }
+        h1 { font-size: 40px; color: #ffcc00; margin-bottom: 10px; text-shadow: 0 0 20px #ffcc00; text-align: center;}
+        h2 { color: #00ffcc; }
+        button, select, input { font-size: 18px; padding: 12px 24px; margin: 8px; border-radius: 8px; background: #1a1a2e; color: white; border: 2px solid #444; cursor: pointer; text-align: center; }
+        button:hover { border-color: #00ffcc; background: #2a2a4e; }
+        button:disabled { border-color: #333; color: #555; cursor: not-allowed; }
         
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; padding: 10px; box-sizing: border-box; pointer-events: none; z-index: 10; }
         .stats { display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; text-shadow: 2px 2px 0 #000; }
-        #exp-bg { width: 100%; height: 8px; background: #222; border-radius: 4px; margin-top: 8px; border: 1px solid #555; }
-        #exp-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #0fcc88, #00ffcc); transition: 0.1s; }
+        #exp-bg { width: 100%; height: 8px; background: #222; border-radius: 4px; margin-top: 8px; border: 1px solid #333; }
+        #exp-bar { width: 0%; height: 100%; background: #00ffcc; transition: width 0.1s; }
         
-        .char-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-height: 60vh; overflow-y: auto; padding: 10px; pointer-events: auto;}
-        .char-box { border: 2px solid #444; border-radius: 8px; padding: 10px; text-align: center; cursor: pointer; background: #1a1a2e; font-size: 12px; }
+        .skill-card { background: #222; border: 2px solid #444; border-radius: 10px; padding: 15px; margin: 5px; width: 280px; text-align: center; cursor: pointer; pointer-events: auto; }
+        .skill-card:hover { border-color: #00ffcc; background: #333; }
+        
+        #gacha-result { font-size: 32px; font-weight: bold; color: #ff00ff; text-shadow: 0 0 10px #ff00ff; margin: 20px 0; display: none; }
+        .char-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-height: 50vh; overflow-y: auto; padding: 10px; }
+        .char-box { border: 2px solid #555; border-radius: 8px; padding: 10px; text-align: center; cursor: pointer; background: #111; }
         .char-box.owned { border-color: #00ffcc; }
-        .char-box.selected { background: #005555; border-color: #fff; }
-        .awake-badge { display: inline-block; font-size: 10px; background: #ff00ff; color: #fff; padding: 2px 5px; border-radius: 3px; margin-top: 4px; font-weight: bold;}
+        .char-box.selected { background: #00ffcc; color: black; font-weight: bold; }
         
-        #skill-container { display: flex; flex-direction: column; gap: 10px; width: 80%; max-width: 400px; }
-        .skill-btn { background: #222; border: 2px solid #ffcc00; font-size: 18px; padding: 15px; }
+        #boss-notice { position: absolute; top: 20%; width: 100%; text-align: center; font-size: 50px; color: red; font-weight: bold; text-shadow: 2px 2px 0 #000; display: none; z-index: 30; }
+        #liberation-ui { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); font-size: 24px; color: #ff0000; font-weight: bold; text-shadow: 0 0 10px #000; }
     </style>
 </head>
 <body>
 
     <div id="screen-login" class="overlay">
-        <h1>JS SURVIVOR<br><span style="font-size:20px;color:#fff;">ULTIMATE EDITION</span></h1>
-        <input type="text" id="player-name" placeholder="プレイヤー名" maxlength="10">
+        <h1>JS SURVIVOR</h1>
+        <p>プレイヤー名を入力してください</p>
+        <input type="text" id="player-name-input" placeholder="名前" maxlength="10">
         <button id="btn-login">ゲーム開始</button>
     </div>
 
     <div id="screen-home" class="overlay hidden">
-        <h2 id="disp-name"></h2>
-        <p>所持コイン: <span id="disp-coins" style="color:#ffcc00; font-size:24px; font-weight:bold;">0</span> C</p>
-        <select id="stage-select"></select>
-        <div style="margin-top: 15px;">
-            <button id="btn-start" style="border-color:#00ffcc; color:#00ffcc;">通常出撃</button>
-            <button id="btn-raid" style="border-color:#ff00ff; color:#ffccff;">レイド（覚醒挑戦）</button>
+        <h1>HOME</h1>
+        <p>ようこそ、<span id="disp-name" style="color:#00ffcc;"></span> さん!</p>
+        <p>所持コイン: <span id="disp-coins" style="color:#ffcc00; font-size:24px;">0</span> C</p>
+        <div>
+            <select id="stage-select"></select>
+            <button id="btn-start">通常出撃</button>
+            <button id="btn-raid-menu" style="border-color:#ff00ff; color:#ffccff;">レイドバトル (覚醒)</button>
         </div>
-        <div style="margin-top: 10px;">
-            <button id="btn-chars">キャラクター変更</button>
-            <button id="btn-gacha">ガチャ (1000C)</button>
+        <div style="margin-top: 15px;">
+            <button id="btn-gacha-menu">ガチャを引く (1000C)</button>
+            <button id="btn-char-menu">キャラ変更</button>
         </div>
     </div>
 
     <div id="screen-chars" class="overlay hidden">
         <h2>キャラクター選択</h2>
         <div id="char-list" class="char-grid"></div>
-        <button id="btn-close-chars">戻る</button>
+        <button id="btn-close-chars">ホームに戻る</button>
     </div>
 
     <div id="screen-raid" class="overlay hidden">
         <h2 style="color:#ff00ff;">挑む覚醒ボスを選択</h2>
-        <div id="raid-list" class="char-grid"></div>
-        <button id="btn-close-raid">戻る</button>
+        <div id="raid-char-list" class="char-grid"></div>
+        <button id="btn-close-raid">ホームに戻る</button>
     </div>
 
     <div id="screen-gacha" class="overlay hidden">
-        <h1 style="color:#ff00ff;">GACHA</h1>
-        <button id="btn-pull" style="font-size:24px; padding: 15px 30px;">引く</button>
-        <div id="gacha-res" style="font-size:24px; margin:20px; font-weight:bold;"></div>
-        <button id="btn-close-gacha">戻る</button>
+        <h1 style="color:#ff00ff;">CHARACTER GACHA</h1>
+        <p>1回 1000 コイン</p>
+        <button id="btn-pull-gacha">ガチャを引く!</button>
+        <div id="gacha-result"></div>
+        <button id="btn-close-gacha">ホームに戻る</button>
     </div>
 
     <div id="screen-levelup" class="overlay hidden">
-        <h1 style="color:#ffcc00;">LEVEL UP!</h1>
+        <h2>LEVEL UP!</h2>
         <div id="skill-container"></div>
     </div>
 
     <div id="screen-result" class="overlay hidden">
-        <h1 id="res-title"></h1>
-        <p>獲得コイン: <span id="res-coins" style="font-size:24px; color:#ffcc00;"></span> C</p>
-        <button id="btn-restart">HOMEに戻る</button>
+        <h1 id="res-title">FINISH</h1>
+        <p style="font-size: 24px;">獲得コイン: <span id="res-coins" style="color:#ffcc00;">0</span> C</p>
+        <button id="btn-restart">HOME</button>
     </div>
 
     <div id="ui-layer" class="hidden">
         <div class="stats">
             <div>Lv.<span id="ui-level">1</span></div>
-            <div id="timer">05:00</div>
-            <div id="ui-char" style="color:#00ffcc;"></div>
+            <div id="timer" style="color:#ff4444">05:00</div>
+            <div id="ui-char-name" style="color:#00ffcc;"></div>
         </div>
         <div id="exp-bg"><div id="exp-bar"></div></div>
+        <div id="liberation-ui"></div>
     </div>
 
+    <div id="boss-notice">WARNING: HUGE BOSS!!</div>
     <canvas id="gameCanvas"></canvas>
 
     <script>
@@ -99,93 +108,129 @@
         function resize() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; }
         window.addEventListener('resize', resize); resize();
 
-        let saveData = { name: "", coins: 0, unlockedStage: 1, chars: [0], selectedChar: 0, awakeData: {} };
+        let saveData = { name: "", coins: 0, unlockedStage: 1, chars: [0], selectedChar: 0, awakenedChars: [], rookieAwakeStage: 0 };
         
-        // 0:ヒューマン, 19:カミサマ（覚醒対象外）
-        const CHARS = [
-            { id: 0, name: "ヒューマン", color: "#09f", hp: 150, spd: 4.2, atk: 25 },
-            { id: 1, name: "ニンジャ", color: "#333", hp: 100, spd: 6.0, atk: 20 },
-            { id: 2, name: "タンク", color: "#8b4", hp: 400, spd: 2.8, atk: 30 },
-            { id: 3, name: "スナイパ", color: "#0f0", hp: 120, spd: 3.8, atk: 60 },
-            { id: 4, name: "マグネ", color: "#f0f", hp: 150, spd: 4.0, atk: 22 },
-            { id: 5, name: "パラディン", color: "#fd0", hp: 200, spd: 3.5, atk: 25 },
-            { id: 6, name: "ガンナー", color: "#f40", hp: 140, spd: 4.2, atk: 18 },
-            { id: 7, name: "ヴァンピ", color: "#808", hp: 150, spd: 4.5, atk: 25 },
-            { id: 8, name: "サイボグ", color: "#789", hp: 250, spd: 3.5, atk: 40 },
-            { id: 9, name: "エスパー", color: "#0ff", hp: 120, spd: 4.8, atk: 20 },
-            { id: 10, name: "バーサカ", color: "#b22", hp: 180, spd: 4.8, atk: 55 },
-            { id: 11, name: "ゴースト", color: "#eee", hp: 80, spd: 5.5, atk: 22 },
-            { id: 12, name: "サムライ", color: "#c55", hp: 160, spd: 4.5, atk: 45 },
-            { id: 13, name: "リッチ", color: "#438", hp: 130, spd: 4.0, atk: 35 },
-            { id: 14, name: "ギャンブ", color: "#f19", hp: 150, spd: 4.2, atk: 15 },
-            { id: 15, name: "ドクター", color: "#fff", hp: 180, spd: 3.8, atk: 20 },
-            { id: 16, name: "アーチャ", color: "#282", hp: 140, spd: 4.6, atk: 35 },
-            { id: 17, name: "エイリア", color: "#7f0", hp: 150, spd: 5.0, atk: 30 },
-            { id: 18, name: "ドラゴン", color: "#f20", hp: 300, spd: 4.0, atk: 50 },
-            { id: 19, name: "カミサマ", color: "#fe0", hp: 600, spd: 5.5, atk: 80 }
+        const CHAR_DATA = [
+            { id: 0, name: "ルーキー", color: "#09f", hp: 150, spd: 4.2, atk: 25, multi: 1, orb: 0, mag: 120, desc: "進化する者" },
+            { id: 1, name: "ニンジャ", color: "#333", hp: 100, spd: 6.0, atk: 20, multi: 1, orb: 0, mag: 100, desc: "定期的に八方クナイ" },
+            { id: 2, name: "タンク", color: "#8b4513", hp: 400, spd: 2.8, atk: 30, multi: 1, orb: 0, mag: 150, desc: "確率でダメ無効＆反射" },
+            { id: 3, name: "スナイパ", color: "#0f0", hp: 120, spd: 3.8, atk: 60, multi: 1, orb: 0, mag: 80, desc: "貫通レーザー発射" },
+            { id: 4, name: "マグネ", color: "#f0f", hp: 150, spd: 4.0, atk: 22, multi: 1, orb: 0, mag: 400, desc: "回収範囲が広がり続ける" },
+            { id: 5, name: "パラディン", color: "#ffd700", hp: 200, spd: 3.5, atk: 25, multi: 1, orb: 1, mag: 120, desc: "時間経過でバリア復活" },
+            { id: 6, name: "ガンナー", color: "#ff4500", hp: 140, spd: 4.2, atk: 18, multi: 3, orb: 0, mag: 100, desc: "通常弾の連射速度が2倍" },
+            { id: 7, name: "ヴァンピィ", color: "#800080", hp: 150, spd: 4.5, atk: 25, multi: 1, orb: 0, mag: 120, desc: "敵撃破でHP微回復" },
+            { id: 8, name: "サイボーグ", color: "#708090", hp: 250, spd: 3.5, atk: 40, multi: 1, orb: 0, mag: 100, desc: "HPが減るほど攻撃UP" },
+            { id: 9, name: "エスパー", color: "#00ffff", hp: 120, spd: 4.8, atk: 20, multi: 1, orb: 3, mag: 150, desc: "被弾時に念動波で反撃" },
+            { id: 10, name: "バーサーカ", color: "#b22222", hp: 180, spd: 4.8, atk: 55, multi: 1, orb: 0, mag: 90, desc: "敵を倒すほど攻撃力無限UP" },
+            { id: 11, name: "ゴースト", color: "#e6e6fa", hp: 90, spd: 5.5, atk: 22, multi: 1, orb: 0, mag: 250, desc: "ギミックダメージ無効" },
+            { id: 12, name: "サムライ", color: "#cd5c5c", hp: 160, spd: 4.5, atk: 45, multi: 1, orb: 0, mag: 110, desc: "定期的に広範囲の斬撃" },
+            { id: 13, name: "リッチ", color: "#483d8b", hp: 130, spd: 4.0, atk: 35, multi: 2, orb: 1, mag: 130, desc: "敵撃破時、確率で魔法弾" },
+            { id: 14, name: "ギャンブラ", color: "#ff1493", hp: 150, spd: 4.2, atk: 15, multi: 1, orb: 0, mag: 150, desc: "所持コインが多いほど高火力" },
+            { id: 15, name: "ドクター", color: "#ffffff", hp: 180, spd: 3.8, atk: 20, multi: 1, orb: 0, mag: 100, desc: "毎秒HPが自動回復" },
+            { id: 16, name: "アーチャー", color: "#228b22", hp: 140, spd: 4.6, atk: 35, multi: 2, orb: 0, mag: 110, desc: "ホーミングアロー" },
+            { id: 17, name: "エイリアン", color: "#7fff00", hp: 150, spd: 5.0, atk: 30, multi: 1, orb: 0, mag: 80, desc: "定期的にワープ＆爆弾設置" },
+            { id: 18, name: "ドラゴン", color: "#dc143c", hp: 300, spd: 4.0, atk: 50, multi: 1, orb: 1, mag: 100, desc: "前方に炎のブレスを吐く" },
+            { id: 19, name: "カミサマ", color: "#ffea00", hp: 500, spd: 5.5, atk: 70, multi: 3, orb: 3, mag: 300, desc: "たまに画面全域に神の雷" }
         ];
 
-        function getAwake(id) { return saveData.awakeData[id] || 0; }
-        function save() { localStorage.setItem('jsSurvivorUltimate', JSON.stringify(saveData)); }
-        function load() {
-            let d = localStorage.getItem('jsSurvivorUltimate');
+        const ROOKIE_NAMES = ["ルーキー", "ヒューマン", "ヒューマン v1", "ヒューマン v2", "ヒューマン v3", "ヒューマン v4"];
+
+        function loadData() {
+            let d = localStorage.getItem('jsSurvivorUltraSave');
             if(d) saveData = JSON.parse(d);
-            if(!saveData.awakeData) saveData.awakeData = {};
+            if(!saveData.awakenedChars) saveData.awakenedChars = [];
+            if(saveData.rookieAwakeStage === undefined) saveData.rookieAwakeStage = 0;
             if(saveData.name) { document.getElementById('screen-login').classList.add('hidden'); openHome(); }
         }
+        function saveGame() { localStorage.setItem('jsSurvivorUltraSave', JSON.stringify(saveData)); }
 
-        let state = 'LOGIN', time = 300, frame = 0, isBoss = false, stage = 1;
-        let p, eList, bList, gList, minions, traps;
-        let tPos = { x: 0, y: 0 };
-        let isRaid = false, raidId = 0;
+        let state = 'LOGIN', playTime = 300, scoreCoins = 0, frameCount = 0;
+        let isBossActive = false, currentStage = 1;
+        let player, enemies, bullets, gems, orbits, damageTexts, hazards;
+        let targetPos = { x: 0, y: 0 };
+        let isRaidMode = false, raidTargetCharId = 0, raidTargetRookieStage = 0;
+
+        let libTimer = 0, libCool = 0; 
+
+        const skillPool = [
+            { id: 'multi', name: '連射', desc: '弾数+1' },
+            { id: 'power', name: '威力', desc: 'ダメージ+10' },
+            { id: 'orbit', name: 'バリア', desc: '周囲を回る守護石' },
+            { id: 'magnet', name: '磁石', desc: '回収範囲UP' },
+            { id: 'speed', name: '加速', desc: '移動速度UP' },
+            { id: 'heal', name: '回復', desc: 'HPを50%回復' }
+        ];
 
         document.getElementById('btn-login').onclick = () => {
-            if(!document.getElementById('player-name').value) return;
-            saveData.name = document.getElementById('player-name').value; save();
+            let n = document.getElementById('player-name-input').value.trim();
+            if(!n) return alert("名前を入力してください!");
+            saveData.name = n; saveGame();
             document.getElementById('screen-login').classList.add('hidden'); openHome();
         };
+
+        function getCharDisplayName(id) {
+            if(id === 0) return ROOKIE_NAMES[saveData.rookieAwakeStage];
+            let n = CHAR_DATA[id].name;
+            if(saveData.awakenedChars.includes(id)) n += " ★覚醒";
+            return n;
+        }
 
         function openHome() {
             state = 'HOME';
             document.getElementById('disp-name').innerText = saveData.name;
             document.getElementById('disp-coins').innerText = saveData.coins;
-            let sel = document.getElementById('stage-select'); sel.innerHTML = "";
+            
+            const select = document.getElementById('stage-select');
+            select.innerHTML = "";
             for(let i=1; i<=30; i++) {
-                let opt = document.createElement('option'); opt.value = i; opt.innerText = `STAGE ${i}`;
+                let opt = document.createElement('option');
+                opt.value = i; opt.innerText = `STAGE ${i}`;
                 if(i > saveData.unlockedStage) opt.disabled = true;
-                sel.appendChild(opt);
+                select.appendChild(opt);
             }
-            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+            select.value = Math.min(saveData.unlockedStage, 30);
+            
+            document.querySelectorAll('.overlay').forEach(e => e.classList.add('hidden'));
             document.getElementById('screen-home').classList.remove('hidden');
         }
 
-        document.getElementById('btn-chars').onclick = () => {
+        document.getElementById('btn-char-menu').onclick = () => {
             document.getElementById('screen-home').classList.add('hidden');
-            let list = document.getElementById('char-list'); list.innerHTML = "";
-            CHARS.forEach(c => {
-                let owns = saveData.chars.includes(c.id);
+            const list = document.getElementById('char-list');
+            list.innerHTML = "";
+            CHAR_DATA.forEach(c => {
+                let isOwned = saveData.chars.includes(c.id);
                 let div = document.createElement('div');
-                let alv = getAwake(c.id);
-                div.className = `char-box ${owns?'owned':''} ${saveData.selectedChar===c.id?'selected':''}`;
-                div.innerHTML = `<strong>${owns?c.name:'???'}</strong><br>${alv>0?'<span class="awake-badge">Lv.'+alv+'</span>':''}`;
-                if(owns) div.onclick = () => { saveData.selectedChar = c.id; save(); document.getElementById('btn-chars').click(); };
+                div.className = `char-box ${isOwned ? 'owned' : ''} ${saveData.selectedChar === c.id ? 'selected' : ''}`;
+                div.innerHTML = `<strong>${isOwned ? getCharDisplayName(c.id) : '???'}</strong><br><span style="font-size:14px;">${isOwned ? c.desc : '未解放'}</span>`;
+                if(isOwned) div.onclick = () => { saveData.selectedChar = c.id; saveGame(); document.getElementById('btn-char-menu').click(); };
                 list.appendChild(div);
             });
             document.getElementById('screen-chars').classList.remove('hidden');
         };
         document.getElementById('btn-close-chars').onclick = openHome;
 
-        document.getElementById('btn-raid').onclick = () => {
+        document.getElementById('btn-raid-menu').onclick = () => {
             document.getElementById('screen-home').classList.add('hidden');
-            let list = document.getElementById('raid-list'); list.innerHTML = "";
-            CHARS.forEach(c => {
-                // ヒューマン(0)とカミサマ(19)は対象外
-                if(saveData.chars.includes(c.id) && c.id !== 19 && c.id !== 0) {
-                    let alv = getAwake(c.id);
-                    let div = document.createElement('div'); div.className = 'char-box owned';
-                    div.innerHTML = `<strong>${c.name}</strong><br>次: Lv.${alv+1}`;
-                    if(alv < 4) div.onclick = () => { if(confirm(`${c.name}の覚醒Lv.${alv+1}ボスに挑む？`)){ raidId=c.id; isRaid=true; init(); } };
-                    else div.innerHTML += "<br>MAX";
+            const list = document.getElementById('raid-char-list');
+            list.innerHTML = "";
+            CHAR_DATA.forEach(c => {
+                if(saveData.chars.includes(c.id)) {
+                    let div = document.createElement('div');
+                    if(c.id === 0) {
+                        let nextStage = saveData.rookieAwakeStage + 1;
+                        if(nextStage > 5) {
+                            div.className = 'char-box owned'; div.innerHTML = `<strong>ヒューマン</strong><br><span style="color:#f0f;">完全覚醒済み</span>`;
+                        } else {
+                            div.className = 'char-box'; div.innerHTML = `<strong>${ROOKIE_NAMES[nextStage]} 昇格戦</strong><br>未クリア`;
+                            div.onclick = () => { if(confirm(`${ROOKIE_NAMES[nextStage]}への覚醒ボスに挑みますか？`)){ startRaid(0, nextStage); } };
+                        }
+                    } else {
+                        let isAwakened = saveData.awakenedChars.includes(c.id);
+                        div.className = `char-box ${isAwakened ? 'owned' : ''}`;
+                        div.innerHTML = `<strong>${c.name}</strong><br>${isAwakened ? '<span style="color:#f0f;">★覚醒済み</span>' : '未覚醒'}`;
+                        div.onclick = () => { if(confirm(`${c.name}の覚醒ボスに挑みますか？`)){ startRaid(c.id, 0); } };
+                    }
                     list.appendChild(div);
                 }
             });
@@ -193,365 +238,516 @@
         };
         document.getElementById('btn-close-raid').onclick = openHome;
 
-        document.getElementById('btn-gacha').onclick = () => {
+        document.getElementById('btn-gacha-menu').onclick = () => {
             document.getElementById('screen-home').classList.add('hidden');
+            document.getElementById('gacha-result').style.display = 'none';
             document.getElementById('screen-gacha').classList.remove('hidden');
         };
         document.getElementById('btn-close-gacha').onclick = openHome;
-        document.getElementById('btn-pull').onclick = () => {
-            if(saveData.coins < 1000) return; saveData.coins -= 1000;
-            let n = Math.floor(Math.random()*19); if(Math.random()<0.01) n=19; // 神様1%
-            let res = document.getElementById('gacha-res');
-            if(saveData.chars.includes(n)) { res.innerText = CHARS[n].name+" (被り/300C還元)"; saveData.coins+=300; }
-            else { res.innerText = "NEW! "+CHARS[n].name; saveData.chars.push(n); }
-            save(); document.getElementById('disp-coins').innerText = saveData.coins;
+        document.getElementById('btn-pull-gacha').onclick = () => {
+            if(saveData.coins < 1000) return alert("コインが足りません!");
+            saveData.coins -= 1000;
+            let roll = Math.random();
+            let newCharId = (roll < 0.01) ? 19 : Math.floor(Math.random() * 18) + 1;
+            let cInfo = CHAR_DATA[newCharId];
+            let resDiv = document.getElementById('gacha-result');
+            if(saveData.chars.includes(newCharId)) {
+                resDiv.innerText = `${cInfo.name} (ダブり... 300C還元)`; resDiv.style.color = "gray"; saveData.coins += 300;
+            } else {
+                resDiv.innerText = `NEW! ${cInfo.name} ゲット!!`; resDiv.style.color = "#00ffcc"; saveData.chars.push(newCharId);
+            }
+            resDiv.style.display = 'block'; saveGame(); document.getElementById('disp-coins').innerText = saveData.coins;
         };
 
-        document.getElementById('btn-start').onclick = () => { isRaid=false; init(); };
+        document.getElementById('btn-start').onclick = () => { isRaidMode = false; initGame(); };
+        function startRaid(targetCharId, targetRStage) { isRaidMode = true; raidTargetCharId = targetCharId; raidTargetRookieStage = targetRStage; initGame(); }
 
-        function init() {
-            stage = parseInt(document.getElementById('stage-select').value);
-            let c = CHARS[saveData.selectedChar]; let alv = getAwake(c.id);
-            p = { x:width/2, y:height/2, size:15, hp:c.hp, maxHp:c.hp, cid:c.id, alv:alv, exp:0, max:3, lv:1, atk:c.atk, spd:c.spd, 
-                  mag:100, shots:1, color:c.color, revived:false, shield:0 };
-            eList=[]; bList=[]; gList=[]; minions=[]; traps=[];
-            time=300; frame=0; isBoss=false; tPos={x:p.x,y:p.y}; state='PLAYING';
-            document.querySelectorAll('.overlay').forEach(el=>el.classList.add('hidden'));
+        function initGame() {
+            currentStage = parseInt(document.getElementById('stage-select').value);
+            let c = CHAR_DATA[saveData.selectedChar];
+            let isAwakened = saveData.awakenedChars.includes(c.id);
+            let isHuman = (c.id === 0 && saveData.rookieAwakeStage >= 1);
+            
+            player = {
+                x: width/2, y: height/2, size: 15, 
+                hp: c.hp * (isAwakened ? 2 : 1), maxHp: c.hp * (isAwakened ? 2 : 1), 
+                color: c.color, level: 1, exp: 0, maxExp: 3, cid: c.id,
+                dodgeCount: 0, defenseMulti: isHuman ? 0.5 : 1, berserkStacks: 0,
+                stats: { 
+                    multi: c.multi + (isAwakened ? 1 : 0), 
+                    power: c.atk * (isAwakened ? 1.5 : 1) + (saveData.rookieAwakeStage >= 4 ? 50 : 0),
+                    speed: c.spd * (isAwakened ? 1.2 : 1), 
+                    orbit: c.orb + (isAwakened ? 1 : 0), 
+                    magnet: c.mag * (isAwakened ? 1.5 : 1) 
+                }
+            };
+            
+            document.getElementById('ui-char-name').innerHTML = getCharDisplayName(c.id);
+            document.getElementById('ui-char-name').style.color = c.color;
+
+            enemies = []; bullets = []; gems = []; orbits = []; damageTexts = []; hazards = [];
+            scoreCoins = 0; playTime = 300; frameCount = 0;
+            isBossActive = false;
+            libTimer = 0; libCool = 0;
+            
+            targetPos = { x: player.x, y: player.y }; 
+            state = 'PLAYING';
+            
+            document.querySelectorAll('.overlay').forEach(s => s.classList.add('hidden'));
             document.getElementById('ui-layer').classList.remove('hidden');
-            document.getElementById('ui-char').innerText = c.name + (alv>0?` +${alv}`:'');
+            document.getElementById('boss-notice').style.display = 'none';
             loop();
         }
 
-        function spawnE() {
-            if(isBoss) return;
-            let x = Math.random() < 0.5 ? -30 : width+30; let y = Math.random() * height;
-            eList.push({x, y, size:12, hp:20*(1+stage*0.2), spd:1.5+Math.random(), isBoss:false});
-        }
-        function spawnB() {
-            isBoss = true; let hp = isRaid ? 80000*(getAwake(raidId)+1) : 15000*stage;
-            eList.push({x:width/2, y:-100, size:80, hp:hp, maxHp:hp, spd:2, isBoss:true, moveTick:0, seed:Math.random()*100});
-        }
-
-        // キャラクター毎に要素が全く被らない覚醒アルゴリズム (Lv1〜4)
-        function applyUniqueAwakeAttacks() {
-            let a = p.alv, id = p.cid;
-            if(a===0) return;
-            
-            // 1:ニンジャ (毒と反射)
-            if(id===1) {
-                if(a>=1) p.spd = CHARS[1].spd * 1.3;
-                if(a>=2 && frame%60===0) traps.push({x:p.x, y:p.y, type:'poison', life:150, size:40});
-                if(a>=3) p.atk = CHARS[1].atk * 1.5;
-                if(a>=4 && frame%120===0) for(let i=0;i<8;i++) bList.push({x:p.x,y:p.y,vx:Math.cos(i)*12,vy:Math.sin(i)*12,dmg:p.atk,isE:false,bounce:4});
-            }
-            // 2:タンク (無敵と衝撃波)
-            if(id===2) {
-                if(a>=1) p.maxHp = CHARS[2].hp * 1.5;
-                if(a>=2 && frame%60===0) bList.push({x:p.x,y:p.y,vx:0,vy:0,size:120,dmg:p.atk,isE:false,life:10,nova:true});
-                if(a>=3) p.atk = CHARS[2].atk * 1.5;
-                if(a>=4) p.shield = 100; // 常にシールド供給
-            }
-            // 3:スナイパ (爆発と貫通レーザー)
-            if(id===3) {
-                if(a>=1) p.shots = 2;
-                if(a>=2 && frame%90===0) bList.push({x:p.x,y:p.y,vx:0,vy:-20,dmg:p.atk*2,isE:false,explosive:true,size:8});
-                if(a>=3) p.atk = CHARS[3].atk * 1.5;
-                if(a>=4 && frame%120===0) bList.push({x:p.x,y:p.y,vx:12,vy:0,dmg:p.atk*4,isE:false,pierce:true,life:100,size:15});
-            }
-            // 4:マグネ (ブラックホール)
-            if(id===4) {
-                if(a>=1) p.mag = 200;
-                if(a>=2) p.mag = 400;
-                if(a>=3) p.atk = CHARS[4].atk * 2;
-                if(a>=4 && frame%240===0) traps.push({x:p.x, y:p.y, type:'blackhole', life:180, size:100});
-            }
-            // 5:パラディン (回復エリアと反射シールド)
-            if(id===5) {
-                if(a>=1 && frame%60===0) p.hp = Math.min(p.maxHp, p.hp+2);
-                if(a>=2 && frame%200===0) traps.push({x:p.x, y:p.y, type:'heal', life:120, size:80});
-                if(a>=3) p.maxHp = CHARS[5].hp * 1.5;
-                if(a>=4 && frame%500===0) p.invincible = 180;
-            }
-            // 6:ガンナー (乱射とタレット)
-            if(id===6) {
-                if(a>=1) p.shots = 3;
-                if(a>=2 && frame%90===0) for(let i=0;i<12;i++) bList.push({x:p.x,y:p.y,vx:Math.cos(i)*8,vy:Math.sin(i)*8,dmg:p.atk*0.5,isE:false});
-                if(a>=3) p.shots = 5;
-                if(a>=4 && frame%180===0) minions.push({x:p.x, y:p.y, type:'turret', life:300});
-            }
-            // 7:ヴァンピ (コウモリと吸収)
-            if(id===7) {
-                if(a>=1) p.lifestealChance = 0.1;
-                if(a>=2 && frame%60===0) bList.push({x:p.x,y:p.y,vx:0,vy:0,dmg:p.atk,isE:false,homing:true,lifesteal:true});
-                if(a>=3) p.maxHp += 0.1; // 常時微増
-                if(a>=4 && frame%30===0) bList.push({x:p.x,y:p.y,vx:0,vy:0,dmg:p.atk*1.5,isE:false,homing:true,lifesteal:true});
-            }
-            // 8:サイボグ (ミサイルとドローン)
-            if(id===8) {
-                if(a>=1) p.atk = CHARS[8].atk * 1.3;
-                if(a>=2 && frame%80===0) bList.push({x:p.x,y:p.y,vx:Math.random()*10-5,vy:-10,dmg:p.atk*3,isE:false,missile:true});
-                if(a>=3) p.maxHp = CHARS[8].hp * 1.3;
-                if(a>=4 && minions.filter(m=>m.type==='drone').length < 2) minions.push({x:p.x, y:p.y, type:'drone', life:9999});
-            }
-            // 9:エスパー (停止とマインドコントロール)
-            if(id===9) {
-                if(a>=1) p.mag = 200;
-                if(a>=2 && frame%200===0) traps.push({x:p.x, y:p.y, type:'freeze', life:80, size:150});
-                if(a>=3) p.atk = CHARS[9].atk * 1.5;
-                if(a>=4 && frame%180===0) bList.push({x:p.x,y:p.y,vx:0,vy:0,dmg:0,isE:false,mindcontrol:true,size:200,life:5});
-            }
-            // 10:バーサカ (低HP強化と斬撃波)
-            if(id===10) {
-                if(a>=1) p.atk = CHARS[10].atk * 1.5;
-                if(a>=2 && frame%40===0) bList.push({x:p.x,y:p.y,vx:12,vy:0,dmg:p.atk,isE:false,wave:true,size:20});
-                if(a>=3) p.spd = CHARS[10].spd * (1 + (p.maxHp-p.hp)/p.maxHp);
-                if(a>=4) p.atk = CHARS[10].atk * (1 + ((p.maxHp-p.hp)/p.maxHp)*3);
-            }
-            // 11:ゴースト (すり抜けと即死)
-            if(id===11) {
-                if(a>=1) p.spd = CHARS[11].spd * 1.3;
-                if(a>=2 && frame%30===0) bList.push({x:p.x,y:p.y,vx:0,vy:-8,dmg:p.atk,isE:false,ghost:true,life:100});
-                if(a>=3) p.evasion = 0.3;
-                if(a>=4 && frame%120===0) bList.push({x:p.x,y:p.y,vx:0,vy:0,dmg:9999,isE:false,size:60,life:5,soulsteal:true});
-            }
-            // 12:サムライ (ダッシュと居合)
-            if(id===12) {
-                if(a>=1) p.atk = CHARS[12].atk * 1.3;
-                if(a>=2 && frame%150===0) { p.x+=120; bList.push({x:p.x-60,y:p.y,vx:0,vy:0,dmg:p.atk*4,isE:false,size:100,life:10,slash:true}); }
-                if(a>=3) p.crit = 0.5;
-                if(a>=4 && frame%60===0) bList.push({x:p.x,y:p.y,vx:0,vy:0,dmg:p.atk*3,isE:false,size:150,life:5,slash:true});
-            }
-            // 13:リッチ (スケルトンと死のオーラ)
-            if(id===13) {
-                if(a>=1) p.mag = 200;
-                if(a>=2 && frame%180===0) minions.push({x:p.x, y:p.y, type:'skeleton', life:400});
-                if(a>=3) traps.push({x:p.x,y:p.y,type:'poison',life:2,size:80});
-                if(a>=4 && frame%30===0) eList.forEach(e=>{if(e.hp<e.maxHp*0.2 && !e.isBoss) e.hp=0;});
-            }
-            // 14:ギャンブ (コインドロップとジャックポット)
-            if(id===14) {
-                if(a>=1) p.coinMod = 2;
-                if(a>=2 && frame%60===0 && Math.random()<0.2) bList.push({x:p.x,y:p.y,vx:0,vy:-15,dmg:p.atk*10,isE:false,jackpot:true,size:20});
-                if(a>=3) p.expMod = 2;
-                if(a>=4) p.evasion = 0.5; // コイントス回避
-            }
-            // 15:ドクター (リジェネと復活)
-            if(id===15) {
-                if(a>=1 && frame%30===0) p.hp = Math.min(p.maxHp, p.hp+1);
-                if(a>=2 && frame%60===0) traps.push({x:p.x,y:p.y,type:'heal',life:30,size:60});
-                if(a>=3) p.maxHp = CHARS[15].hp * 2;
-                if(a>=4 && p.hp<=0 && !p.revived) { p.hp=p.maxHp; p.revived=true; p.invincible=180; }
-            }
-            // 16:アーチャ (地雷と矢の雨)
-            if(id===16) {
-                if(a>=1) p.spd = CHARS[16].spd * 1.2;
-                if(a>=2 && frame%90===0) traps.push({x:p.x, y:p.y, type:'mine', life:600, size:25});
-                if(a>=3) p.shots = 4;
-                if(a>=4 && frame%150===0) for(let i=0;i<10;i++) bList.push({x:p.x+(Math.random()*200-100),y:p.y-300,vx:0,vy:15,dmg:p.atk*2,isE:false});
-            }
-            // 17:エイリア (ワープと敵消去)
-            if(id===17) {
-                if(a>=1) p.spd = CHARS[17].spd * 1.5;
-                if(a>=2 && frame%200===0) { p.x=Math.random()*width; p.y=Math.random()*height; bList.push({x:p.x,y:p.y,vx:0,vy:0,dmg:p.atk*3,isE:false,size:150,life:20,nova:true}); }
-                if(a>=3) p.atk = CHARS[17].atk * 1.5;
-                if(a>=4 && frame%300===0) eList.forEach(e=>{if(!e.isBoss && Math.hypot(e.x-p.x,e.y-p.y)<200) e.hp=0;});
-            }
-            // 18:ドラゴン (メテオと火炎放射)
-            if(id===18) {
-                if(a>=1) p.atk = CHARS[18].atk * 1.3;
-                if(a>=2 && frame%120===0) traps.push({x:Math.random()*width, y:Math.random()*height, type:'meteor', life:120, size:150});
-                if(a>=3) p.maxHp = CHARS[18].hp * 1.5;
-                if(a>=4 && frame%10===0) bList.push({x:p.x,y:p.y,vx:Math.cos(frame*0.1)*12,vy:Math.sin(frame*0.1)*12,dmg:p.atk,isE:false,pierce:true,life:40});
-            }
-        }
-
-        function levelUpUI() {
+        function triggerLevelUp() {
             state = 'LEVELUP';
-            document.getElementById('screen-levelup').classList.remove('hidden');
-            let cont = document.getElementById('skill-container'); cont.innerHTML = "";
-            let skills = [
-                {n:"攻撃力UP", f:()=>p.atk+=10}, {n:"最大HP UP", f:()=>{p.maxHp+=50; p.hp+=50;}}, 
-                {n:"連射数UP", f:()=>p.shots++}, {n:"磁石範囲UP", f:()=>p.mag+=50}
-            ];
-            skills.sort(()=>Math.random()-0.5).slice(0,3).forEach(s=>{
-                let b = document.createElement('button'); b.className = 'skill-btn'; b.innerText = s.n;
-                b.onclick = () => { s.f(); document.getElementById('screen-levelup').classList.add('hidden'); state='PLAYING'; loop(); };
-                cont.appendChild(b);
+            targetPos.x = player.x; targetPos.y = player.y;
+            player.level++; player.exp -= player.maxExp; player.maxExp = Math.floor(3 + player.level * 1.5);
+
+            document.getElementById('ui-level').innerText = player.level;
+            const container = document.getElementById('skill-container');
+            container.innerHTML = '';
+            
+            let pool = [...skillPool];
+            if(player.cid === 0 && saveData.rookieAwakeStage >= 5 && libTimer <= 0 && libCool <= 0) {
+                pool.push({id:'liberation', name:'能力解放', desc:'1分間超強化！(CT90秒)'});
+            }
+            
+            pool.sort(() => 0.5 - Math.random()).slice(0, 3).forEach(s => {
+                let div = document.createElement('div');
+                div.className = 'skill-card';
+                if(s.id==='liberation') div.style.borderColor = "#f00";
+                div.innerHTML = `<strong>${s.name}</strong><p>${s.desc}</p>`;
+                div.onclick = () => {
+                    if(s.id === 'multi') player.stats.multi++;
+                    if(s.id === 'power') player.stats.power += 10;
+                    if(s.id === 'orbit') player.stats.orbit++;
+                    if(s.id === 'magnet') player.stats.magnet += 60;
+                    if(s.id === 'speed') player.stats.speed += 0.5;
+                    if(s.id === 'heal') player.hp = Math.min(player.maxHp, player.hp + player.maxHp*0.5);
+                    if(s.id === 'liberation') libTimer = 3600; 
+                    
+                    state = 'PLAYING'; targetPos.x = player.x; targetPos.y = player.y;
+                    document.getElementById('screen-levelup').classList.add('hidden'); loop();
+                };
+                container.appendChild(div);
             });
+            document.getElementById('screen-levelup').classList.remove('hidden');
+        }
+
+        function spawnEnemy() {
+            if (isBossActive) return;
+            let x = Math.random() < 0.5 ? (Math.random()<.5 ? -30 : width+30) : Math.random()*width;
+            let y = (x < 0 || x > width) ? Math.random()*height : (Math.random()<.5 ? -30 : height+30);
+            
+            let timeMult = (300 - playTime) / 60;
+            let hp = 20 * (1 + timeMult*2) * (1 + currentStage*0.2);
+            let spd = 1.5 + timeMult*0.5 + currentStage*0.05;
+            enemies.push({ x, y, size: 12, hp: hp, maxHp: hp, speed: spd, isBoss: false });
+        }
+
+        function spawnBoss() {
+            isBossActive = true;
+            document.getElementById('boss-notice').style.display = 'block';
+            enemies = []; hazards = []; 
+            
+            if (isRaidMode) {
+                document.getElementById('boss-notice').innerText = "WARNING: AWAKENED BOSS!!";
+                setTimeout(() => document.getElementById('boss-notice').style.display = 'none', 3000);
+                
+                // ボスをより強力に設定
+                let hp = (raidTargetCharId === 0) ? 150000 : 80000 * (1 + currentStage * 0.3); 
+                let c = CHAR_DATA[raidTargetCharId];
+                enemies.push({
+                    x: width/2, y: -120, size: 80, hp: hp, maxHp: hp, speed: c.spd * 0.7, 
+                    isBoss: true, isRaidBoss: true, color: c.color, name: c.name, atk: c.atk, multi: c.multi,
+                    rStage: raidTargetRookieStage, rDodge: 0, rLib: 0
+                });
+            } else {
+                document.getElementById('boss-notice').innerText = "STAGE BOSS!!";
+                setTimeout(() => document.getElementById('boss-notice').style.display = 'none', 3000);
+                // ボスのHPを大きく強化
+                let hp = 15000 * (1 + currentStage * 0.8);
+                enemies.push({
+                    x: width/2, y: -120, size: 100, hp: hp, maxHp: hp, speed: 1.0 + currentStage*0.03, 
+                    isBoss: true, stageIdx: currentStage 
+                });
+            }
+        }
+
+        function takeDamage(baseDmg, isHazard = false) {
+            if(player.cid === 11 && isHazard) return; // ゴーストのギミック無効
+            if(player.cid === 2 && Math.random() < 0.25) { // タンクの防御＆反射
+                damageTexts.push({x: player.x, y: player.y-20, text: "BLOCK", life: 30, color:"#8b4513"});
+                enemies.forEach(e => { if(Math.hypot(player.x-e.x, player.y-e.y)<150) e.hp -= player.stats.power; });
+                return;
+            }
+            if(player.cid === 0 && saveData.rookieAwakeStage >= 3) {
+                player.dodgeCount = (player.dodgeCount + 1) % 3;
+                if(player.dodgeCount === 0) {
+                    damageTexts.push({x: player.x, y: player.y-20, text: "MISS", life: 30, color:"#fff"});
+                    return;
+                }
+            }
+            if(player.cid === 9) { // エスパーの被弾時反撃
+                for(let i=0; i<4; i++) {
+                    bullets.push({x: player.x, y: player.y, vx: Math.cos(i*Math.PI/2)*8, vy: Math.sin(i*Math.PI/2)*8, life: 40, dmg: player.stats.power, isEnemy: false, color:"#0ff"});
+                }
+            }
+
+            let dmg = baseDmg * player.defenseMulti;
+            if(libTimer > 0) dmg *= 0.1;
+            player.hp -= dmg;
+            if(player.hp <= 0) end(false);
         }
 
         function update() {
             if(state !== 'PLAYING') return;
-            frame++;
-            if(frame%60===0) {
-                time--;
-                // ヒューマン(ID:0)の自動回復：最大HPの1/50に弱体化
-                if(p.cid===0) p.hp = Math.min(p.maxHp, p.hp + p.maxHp / 50);
-                if(time<=240 && !isBoss) spawnB();
-                if(time<=0) end(true);
+            frameCount++;
+
+            // 動的ステータス計算（キャラ固有）
+            let p = player.stats.power;
+            if (player.cid === 8) p *= (2 - player.hp/player.maxHp); // サイボーグ
+            if (player.cid === 10) p += player.berserkStacks; // バーサーカ
+            if (player.cid === 14) p += Math.log10(saveData.coins + 1) * 10; // ギャンブラ
+
+            if(libTimer > 0) {
+                libTimer--;
+                document.getElementById('liberation-ui').innerText = `能力解放中: ${Math.ceil(libTimer/60)}s`;
+                if(frameCount % 300 === 0) {
+                    enemies.forEach(e => {
+                        if(Math.hypot(player.x-e.x, player.y-e.y) < 300) {
+                            e.hp -= e.maxHp / 3;
+                            damageTexts.push({x: e.x, y: e.y, text: Math.floor(e.maxHp/3), life: 30, color: "#f00"});
+                        }
+                    });
+                }
+                if(libTimer <= 0) libCool = 5400;
+            } else if (libCool > 0) {
+                libCool--;
+                document.getElementById('liberation-ui').innerText = "";
             }
 
-            p.x += (tPos.x - p.x) * 0.1 * (p.spd/4);
-            p.y += (tPos.y - p.y) * 0.1 * (p.spd/4);
-            if(p.invincible) p.invincible--;
+            if(frameCount % 60 === 0) {
+                playTime--; scoreCoins += (player.cid === 14 ? 4 : 2);
+                // ドクター回復 / ヒューマン回復
+                if(player.cid === 15) player.hp = Math.min(player.maxHp, player.hp + 5); 
+                if(player.cid === 0 && saveData.rookieAwakeStage >= 1) player.hp = Math.min(player.maxHp, player.hp + player.maxHp / 5);
+                // パラディンバリア増加
+                if(player.cid === 5 && player.stats.orbit < 10 && frameCount % 300 === 0) player.stats.orbit++;
+                // マグネ回収範囲増加
+                if(player.cid === 4) player.stats.magnet += 1;
 
-            // 基本射撃
-            if(frame%20===0 && eList.length>0) {
-                let t = eList[0]; let a = Math.atan2(t.y-p.y, t.x-p.x);
-                for(let i=0; i<p.shots; i++) {
-                    let off = (i - (p.shots-1)/2)*0.2;
-                    bList.push({ x:p.x, y:p.y, vx:Math.cos(a+off)*10, vy:Math.sin(a+off)*10, life:60, dmg:p.atk, isE:false });
+                if(playTime <= 180 && !isBossActive) spawnBoss();
+                if(playTime <= 0) end(true);
+            }
+
+            // キャラ固有スキル（特殊弾・アクション）
+            if(frameCount % 120 === 0) {
+                if(player.cid === 1) { // ニンジャ クナイ
+                    for(let i=0; i<8; i++){ bullets.push({x: player.x, y: player.y, vx: Math.cos(i*Math.PI/4)*12, vy: Math.sin(i*Math.PI/4)*12, life: 50, dmg: p, isEnemy: false, color:"#aaa"}); }
+                }
+                if(player.cid === 12) { // サムライ 斬撃
+                    bullets.push({x: player.x, y: player.y, vx: 0, vy: 0, life: 10, dmg: p*4, isEnemy: false, size: 120, isMelee: true});
+                }
+                if(player.cid === 17) { // エイリアン ワープ＆爆破
+                    bullets.push({x: player.x, y: player.y, vx: 0, vy: 0, life: 30, dmg: p*3, isEnemy: false, size: 100, isBomb: true});
+                    player.x = Math.random()*width; player.y = Math.random()*height;
+                }
+            }
+            if(player.cid === 3 && frameCount % 150 === 0) { // スナイパ 貫通レーザー
+                let a = Math.atan2(targetPos.y-player.y, targetPos.x-player.x);
+                bullets.push({x: player.x, y: player.y, vx: Math.cos(a)*25, vy: Math.sin(a)*25, life: 100, dmg: p*2.5, isEnemy: false, isPiercing: true, color:"#0f0", size: 8});
+            }
+            if(player.cid === 18 && frameCount % 180 > 140 && frameCount % 4 === 0) { // ドラゴン ブレス
+                let a = Math.atan2(targetPos.y-player.y, targetPos.x-player.x) + (Math.random()-0.5)*0.6;
+                bullets.push({x: player.x, y: player.y, vx: Math.cos(a)*12, vy: Math.sin(a)*12, life: 35, dmg: p*0.6, isEnemy: false, color:"#f40", size: 18});
+            }
+            if(player.cid === 19 && frameCount % 600 === 0) { // カミサマ 神の雷
+                enemies.forEach(e => { e.hp -= p * 5; damageTexts.push({x: e.x, y: e.y, text: Math.floor(p*5), life: 40, color: "#ffea00"}); });
+            }
+
+            let spd = player.stats.speed;
+            if(libTimer > 0) spd *= 2.5; 
+            let dx = targetPos.x - player.x, dy = targetPos.y - player.y;
+            player.x += dx * 0.1 * (spd/4); player.y += dy * 0.1 * (spd/4);
+
+            if(!isBossActive) {
+                let gType = currentStage % 6; 
+                if(frameCount % (180 - currentStage*2) === 0) {
+                    if(gType === 1) hazards.push({ x: Math.random()*width, y: Math.random()*height, size: 50+currentStage*2, life: 300, type:'poison' });
+                    if(gType === 2) hazards.push({ x: Math.random()*width, y: Math.random()*height, size: 80, life: 200, type:'slow' });
+                    if(gType === 3) hazards.push({ x: Math.random()*width, y: -50, size: 30, life: 400, type:'meteor', vx: (Math.random()-0.5)*5, vy: 3 });
                 }
             }
 
-            applyUniqueAwakeAttacks();
-            if(!isBoss && frame%30===0) spawnE();
-
-            // トラップ
-            for(let i=traps.length-1; i>=0; i--){
-                let tr = traps[i]; tr.life--;
-                if(tr.type==='blackhole') eList.forEach(e=>{ if(Math.hypot(e.x-tr.x, e.y-tr.y)<300){ e.x+=(tr.x-e.x)*0.06; e.y+=(tr.y-e.y)*0.06; }});
-                if(tr.type==='freeze') eList.forEach(e=>{ if(Math.hypot(e.x-tr.x, e.y-tr.y)<tr.size) e.spd = 0; });
-                if(tr.type==='poison' && frame%10===0) eList.forEach(e=>{ if(Math.hypot(e.x-tr.x, e.y-tr.y)<tr.size) e.hp -= p.atk*0.5; });
-                if(tr.type==='heal' && Math.hypot(p.x-tr.x, p.y-tr.y)<tr.size) p.hp = Math.min(p.maxHp, p.hp+2);
-                if(tr.type==='mine' && eList.some(e=>Math.hypot(e.x-tr.x,e.y-tr.y)<30)) { eList.forEach(e=>{if(Math.hypot(e.x-tr.x,e.y-tr.y)<120) e.hp-=p.atk*5;}); tr.life=0; }
-                if(tr.type==='meteor' && tr.life===1) eList.forEach(e=>{if(Math.hypot(e.x-tr.x,e.y-tr.y)<tr.size) e.hp-=p.atk*12;});
-                if(tr.life<=0) traps.splice(i,1);
+            // 射撃（ガンナーは連射速度2倍）
+            let shotInterval = (libTimer > 0) ? 5 : (player.cid === 6 ? 7 : 15);
+            if(frameCount % shotInterval === 0 && enemies.length > 0) {
+                let target = enemies[0];
+                let minDist = Math.hypot(player.x-target.x, player.y-target.y);
+                enemies.forEach(e => { let d = Math.hypot(player.x-e.x, player.y-e.y); if(d < minDist) { minDist = d; target = e; } });
+                let angle = Math.atan2(target.y-player.y, target.x-player.x);
+                let isHuman = (player.cid === 0 && saveData.rookieAwakeStage >= 1);
+                
+                for(let i=0; i<player.stats.multi; i++){
+                    let a = angle + (i - (player.stats.multi-1)/2) * 0.2;
+                    bullets.push({
+                        x: player.x, y: player.y, vx: Math.cos(a)*12, vy: Math.sin(a)*12, 
+                        life: 50, dmg: p, isEnemy: false, isWave: isHuman, isLib: (libTimer>0), isHoming: (player.cid === 16)
+                    });
+                }
             }
 
-            // ミニオン
-            for(let i=minions.length-1; i>=0; i--){
-                let m = minions[i]; m.life--;
-                if(m.type==='turret' && frame%15===0) bList.push({x:m.x, y:m.y, vx:Math.random()*12-6, vy:Math.random()*12-6, dmg:p.atk*0.8, isE:false, life:30});
-                if(m.type==='skeleton') { m.x+=(eList[0]?eList[0].x-m.x:0)*0.03; m.y+=(eList[0]?eList[0].y-m.y:0)*0.03; eList.forEach(e=>{if(Math.hypot(e.x-m.x,e.y-m.y)<40)e.hp-=p.atk*0.5;}); }
-                if(m.type==='drone') { let a=frame*0.05+i*Math.PI; m.x=p.x+Math.cos(a)*60; m.y=p.y+Math.sin(a)*60; if(frame%40===0&&eList[0]){ let ang=Math.atan2(eList[0].y-m.y,eList[0].x-m.x); bList.push({x:m.x,y:m.y,vx:Math.cos(ang)*15,vy:Math.sin(ang)*15,dmg:p.atk*2,isE:false}); } }
-                if(m.life<=0) minions.splice(i,1);
+            if(!isBossActive) {
+                let spawnRate = Math.max(2, 25 - Math.floor((300-playTime)/6));
+                if(frameCount % spawnRate === 0) spawnEnemy();
             }
 
-            // 弾
-            for(let i=bList.length-1; i>=0; i--){
-                let b = bList[i];
-                if(b.homing && eList.length>0) { let t=eList[0]; let a=Math.atan2(t.y-b.y, t.x-b.x); b.vx=Math.cos(a)*10; b.vy=Math.sin(a)*10; }
-                if(b.mindcontrol) { eList.forEach(e=>{if(Math.hypot(e.x-b.x,e.y-b.y)<b.size) e.hp-=p.atk*0.1;}); }
+            orbits = [];
+            for(let i=0; i<player.stats.orbit; i++) {
+                let a = (frameCount * 0.1) + (i * Math.PI*2 / player.stats.orbit);
+                orbits.push({x: player.x + Math.cos(a)*80, y: player.y + Math.sin(a)*80, size: 10});
+            }
+
+            for(let i=bullets.length-1; i>=0; i--){
+                let b = bullets[i]; 
+                // ホーミング弾 (アーチャー)
+                if(b.isHoming && enemies.length > 0) {
+                    let t = enemies[0]; let md = Math.hypot(b.x-t.x, b.y-t.y);
+                    enemies.forEach(e => { let d = Math.hypot(b.x-e.x, b.y-e.y); if(d<md){md=d; t=e;} });
+                    let a = Math.atan2(t.y-b.y, t.x-b.x);
+                    b.vx = b.vx*0.95 + Math.cos(a)*0.8; b.vy = b.vy*0.95 + Math.sin(a)*0.8;
+                }
                 b.x += b.vx; b.y += b.vy; b.life--;
                 
-                if(b.isE && Math.hypot(p.x-b.x, p.y-b.y) < p.size+5) {
-                    if(!p.invincible && !(p.evasion && Math.random()<p.evasion)) {
-                        if(p.shield>0) p.shield-=b.dmg; else p.hp -= b.dmg;
-                    }
-                    bList.splice(i, 1); if(p.hp<=0 && !p.revived) end(false); // ドクター復活処理はapplyUniqueで対応
-                } else if(b.life<=0) bList.splice(i, 1);
+                if(b.isEnemy && Math.hypot(player.x-b.x, player.y-b.y) < player.size + (b.size||5)) {
+                    takeDamage(b.dmg);
+                    bullets.splice(i, 1); continue;
+                }
+                if(b.life <= 0) bullets.splice(i, 1);
             }
 
-            // 敵（ボス不規則AI含む）
-            for(let i=eList.length-1; i>=0; i--){
-                let e = eList[i]; e.moveTick++;
-                let a = Math.atan2(p.y-e.y, p.x-e.x);
+            let pAura = (player.cid === 0 && saveData.rookieAwakeStage >= 2) ? 150 : 0;
+
+            for(let ei = enemies.length-1; ei>=0; ei--) {
+                let e = enemies[ei];
+                let angle = Math.atan2(player.y-e.y, player.x-e.x);
+                let eSpd = e.speed;
+                if(pAura > 0 && Math.hypot(player.x-e.x, player.y-e.y) < pAura) eSpd *= 0.5;
                 
+                e.x += Math.cos(angle) * eSpd; e.y += Math.sin(angle) * eSpd;
+
                 if(e.isBoss) {
-                    // ★ボス不規則AI: プレイヤーに向かいつつサイン波で蛇行＋一定間隔でダッシュ
-                    let drift = Math.sin(e.moveTick * 0.05 + e.seed) * 2.0;
-                    let dash = (e.moveTick % 150 < 30) ? 3 : 0.8; 
-                    e.x += Math.cos(a + drift) * e.spd * dash;
-                    e.y += Math.sin(a + drift) * e.spd * dash;
-
-                    if(frame%80===0) for(let j=0; j<8; j++) bList.push({x:e.x, y:e.y, vx:Math.cos(j)*5, vy:Math.sin(j)*5, dmg:20, isE:true, life:100});
-                } else {
-                    e.x += Math.cos(a) * e.spd; e.y += Math.sin(a) * e.spd;
-                }
-
-                // 衝突判定
-                for(let j=bList.length-1; j>=0; j--){
-                    let b = bList[j];
-                    if(!b.isE && Math.hypot(e.x-b.x, e.y-b.y) < e.size+(b.size||10)) {
-                        let dmg = b.dmg; if(p.crit && Math.random()<p.crit) dmg*=2;
-                        e.hp -= dmg;
-                        
-                        // ★ヒューマン(cid:0): ボスへのノックバック効果を1/2に減少
-                        let kb = (p.cid===0 && e.isBoss) ? 0.5 : 1.0;
-                        e.x += b.vx * 0.3 * kb; e.y += b.vy * 0.3 * kb;
-                        
-                        if(b.explosive) traps.push({x:e.x, y:e.y, type:'mine', life:2, size:60}); 
-                        if(b.lifesteal && Math.random()< (p.lifestealChance||1)) p.hp = Math.min(p.maxHp, p.hp+2);
-                        if(b.soulsteal && !e.isBoss) e.hp = 0;
-                        
-                        if(!b.pierce && !b.wave && !b.nova && !b.ghost && !b.slash && !b.mindcontrol) {
-                            if(b.bounce>0){ b.bounce--; b.vx*=-1; } else { bList.splice(j, 1); }
+                    if (e.isRaidBoss) {
+                        if(e.rStage >= 5 && frameCount % 600 === 0) e.rLib = 300;
+                        if(e.rLib > 0) { e.rLib--; e.speed = 10; } else { e.speed = CHAR_DATA[0].spd * 0.7; }
+                        if(e.rStage >= 2 && Math.hypot(player.x-e.x, player.y-e.y) < 200) {
+                            let dx = player.x - e.x, dy = player.y - e.y;
+                            player.x -= dx * 0.05; player.y -= dy * 0.05; 
+                        }
+                        if(frameCount % (e.rLib > 0 ? 10 : 40) === 0) {
+                            let pwr = e.atk * (e.rStage >= 4 ? 2 : 1);
+                            for(let i=0; i<e.multi + (e.rStage >= 1 ? 2 : 0); i++){
+                                let a = angle + (i - 1) * 0.25;
+                                bullets.push({x: e.x, y: e.y, vx: Math.cos(a)*6, vy: Math.sin(a)*6, life: 100, dmg: pwr, isEnemy: true, size: 10});
+                            }
+                        }
+                    } else {
+                        if(frameCount % 60 === 0) {
+                            let bType = e.stageIdx % 5;
+                            let bShots = Math.floor(e.stageIdx / 3) + 4;
+                            if(bType === 0) { 
+                                for(let i=0; i<bShots; i++){
+                                    let a = (Math.PI*2/bShots) * i;
+                                    bullets.push({x: e.x, y: e.y, vx: Math.cos(a)*5, vy: Math.sin(a)*5, life: 120, dmg: 15+e.stageIdx, isEnemy: true});
+                                }
+                            } else if(bType === 1) { 
+                                let a = frameCount * 0.1 + e.stageIdx;
+                                bullets.push({x: e.x, y: e.y, vx: Math.cos(a)*7, vy: Math.sin(a)*7, life: 100, dmg: 20, isEnemy: true});
+                            } else if(bType === 2) { 
+                                e.speed = 15; setTimeout(()=>{if(e) e.speed = 1.0;}, 500);
+                            } else if(bType === 3) { 
+                                for(let i=0; i<3; i++){
+                                    let a = angle + (Math.random()-0.5);
+                                    bullets.push({x: e.x, y: e.y, vx: Math.cos(a)*8, vy: Math.sin(a)*8, life: 80, dmg: 15, isEnemy: true});
+                                }
+                            } else if(bType === 4) { 
+                                enemies.push({ x: e.x, y: e.y, size: 10, hp: 50, maxHp: 50, speed: 2.5, isBoss: false });
+                            }
                         }
                     }
                 }
 
-                if(e.hp<=0) {
-                    if(e.isBoss) { end(true); return; }
-                    gList.push({x:e.x, y:e.y}); eList.splice(i,1); 
-                    saveData.coins += (p.coinMod ? 5*p.coinMod : 5);
-                } else if(Math.hypot(p.x-e.x, p.y-e.y) < p.size+e.size) {
-                    if(!p.invincible && !(p.evasion && Math.random()<p.evasion)) {
-                        if(p.shield>0) p.shield-=2; else p.hp -= 2;
+                for(let bi=bullets.length-1; bi>=0; bi--) {
+                    let b = bullets[bi];
+                    if(!b.isEnemy && Math.hypot(e.x-b.x, e.y-b.y) < e.size + (b.size||10)) {
+                        if(e.isRaidBoss && e.rStage >= 3) {
+                            e.rDodge = (e.rDodge + 1) % 3;
+                            if(e.rDodge === 0) { bullets.splice(bi, 1); continue; }
+                        }
+                        e.hp -= b.dmg;
+                        if(b.isWave) { e.x += b.vx*1.5; e.y += b.vy*1.5; }
+                        damageTexts.push({x: e.x, y: e.y, text: Math.floor(b.dmg), life: 20});
+                        if(!b.isPiercing && !b.isMelee && !b.isBomb) bullets.splice(bi, 1);
                     }
-                    if(p.hp<=0 && !p.revived) end(false);
+                }
+
+                orbits.forEach(o => {
+                    if(Math.hypot(e.x-o.x, e.y-o.y) < e.size + o.size && frameCount % 10 === 0) {
+                        e.hp -= p;
+                        damageTexts.push({x: e.x, y: e.y, text: Math.floor(p), life: 20});
+                    }
+                });
+
+                if(e.hp <= 0) {
+                    if(e.isBoss) { 
+                        // ★ ボス撃破で即クリアにする変更
+                        enemies = []; bullets = []; 
+                        end(true); return; 
+                    }
+                    if(player.cid === 7 && Math.random()<0.2) player.hp = Math.min(player.maxHp, player.hp+2); // ヴァンピィ回復
+                    if(player.cid === 10) player.berserkStacks += 1; // バーサーカ攻撃力アップ
+                    if(player.cid === 13 && Math.random()<0.2) { // リッチの魔法弾
+                        for(let i=0;i<3;i++){
+                            let a=Math.random()*Math.PI*2;
+                            bullets.push({x:e.x, y:e.y, vx:Math.cos(a)*5, vy:Math.sin(a)*5, life:60, dmg:p, isEnemy:false, color:"#808"});
+                        }
+                    }
+                    gems.push({x: e.x, y: e.y, val: 1});
+                    enemies.splice(ei, 1); scoreCoins += 5;
+                } else if(Math.hypot(player.x-e.x, player.y-e.y) < player.size + e.size) {
+                    takeDamage(e.isBoss ? 20 : 3);
                 }
             }
 
-            for(let i=gList.length-1; i>=0; i--) {
-                let g = gList[i];
-                if(Math.hypot(p.x-g.x, p.y-g.y) < p.mag) { g.x+=(p.x-g.x)*0.15; g.y+=(p.y-g.y)*0.15; }
-                if(Math.hypot(p.x-g.x, p.y-g.y) < 20) { 
-                    p.exp += (p.expMod ? 1*p.expMod : 1); 
-                    gList.splice(i,1); 
-                    if(p.exp>=p.max){ p.lv++; p.exp=0; p.max+=2; levelUpUI(); } 
+            for(let i=hazards.length-1; i>=0; i--) {
+                let h = hazards[i];
+                if(h.type==='meteor') { h.x+=h.vx; h.y+=h.vy; }
+                h.life--;
+                if(Math.hypot(player.x-h.x, player.y-h.y) < player.size + h.size) {
+                    if(h.type==='poison' && frameCount % 10===0) takeDamage(3, true);
+                    if(h.type==='slow') player.x -= dx*0.08, player.y -= dy*0.08;
+                    if(h.type==='meteor') { takeDamage(25, true); h.life = 0; }
                 }
+                if(h.life <= 0) hazards.splice(i, 1);
             }
 
-            document.getElementById('timer').innerText = Math.floor(time/60) + ":" + String(time%60).padStart(2,'0');
-            document.getElementById('exp-bar').style.width = (p.exp/p.max*100) + "%";
-            document.getElementById('ui-level').innerText = p.lv;
+            for(let gi=gems.length-1; gi>=0; gi--) {
+                let g = gems[gi];
+                let d = Math.hypot(player.x-g.x, player.y-g.y);
+                if(d < player.stats.magnet) { let a = Math.atan2(player.y-g.y, player.x-g.x); g.x += Math.cos(a)*15; g.y += Math.sin(a)*15; }
+                if(d < 20) { player.exp += g.val; gems.splice(gi, 1); if(player.exp >= player.maxExp) triggerLevelUp(); }
+            }
+
+            damageTexts.forEach((d, i) => { d.y--; d.life--; if(d.life <= 0) damageTexts.splice(i, 1); });
+
+            let m = Math.floor(playTime/60), s = playTime%60;
+            document.getElementById('timer').innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            document.getElementById('exp-bar').style.width = (player.exp/player.maxExp*100) + "%";
         }
 
         function draw() {
-            ctx.fillStyle = "#05050a"; ctx.fillRect(0, 0, width, height);
-            traps.forEach(t => { 
-                ctx.fillStyle = t.type==='poison'?"rgba(0,150,0,0.4)":t.type==='heal'?"rgba(0,255,100,0.3)":t.type==='freeze'?"rgba(0,100,255,0.2)":t.type==='blackhole'?"rgba(50,0,100,0.7)":"rgba(255,50,0,0.5)";
-                ctx.beginPath(); ctx.arc(t.x, t.y, t.size, 0, Math.PI*2); ctx.fill(); 
+            ctx.fillStyle = (currentStage % 4 === 0 && !isBossActive) ? "rgba(0, 0, 0, 0.9)" : "rgba(5, 5, 15, 0.4)";
+            ctx.fillRect(0, 0, width, height);
+
+            hazards.forEach(h => {
+                if(h.type==='poison') ctx.fillStyle = `rgba(100, 0, 100, ${h.life/300 * 0.5})`;
+                if(h.type==='slow') ctx.fillStyle = `rgba(0, 50, 100, ${h.life/200 * 0.4})`;
+                if(h.type==='meteor') ctx.fillStyle = `rgba(255, 100, 0, 0.8)`;
+                ctx.beginPath(); ctx.arc(h.x, h.y, h.size, 0, Math.PI*2); ctx.fill();
             });
-            gList.forEach(g => { ctx.fillStyle = "#0f8"; ctx.fillRect(g.x-4, g.y-4, 8, 8); });
-            minions.forEach(m => { ctx.fillStyle = m.type==='drone'?"#0ff":"#aaa"; ctx.fillRect(m.x-10, m.y-10, 20, 20); });
-            bList.forEach(b => { 
-                ctx.fillStyle = b.isE ? "#f0f" : "#ffcc00"; 
-                if(b.wave||b.slash||b.nova||b.mindcontrol) ctx.fillStyle="rgba(255,255,255,0.4)";
-                ctx.beginPath(); ctx.arc(b.x, b.y, b.size||5, 0, Math.PI*2); ctx.fill(); 
-            });
-            eList.forEach(e => {
-                ctx.fillStyle = e.isBoss ? "#f00" : "#f44";
-                ctx.beginPath(); ctx.arc(e.x, e.y, e.size, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = "red"; ctx.fillRect(e.x-e.size, e.y-e.size-10, e.size*2*(e.hp/e.maxHp), 5);
+
+            gems.forEach(g => { ctx.fillStyle = "#0f8"; ctx.beginPath(); ctx.arc(g.x, g.y, 4, 0, Math.PI*2); ctx.fill(); });
+            
+            bullets.forEach(b => { 
+                if(b.isMelee || b.isBomb) {
+                    ctx.fillStyle = b.isMelee ? "rgba(255,255,255,0.3)" : "rgba(128,255,0,0.4)";
+                    ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); ctx.fill();
+                } else if(b.isEnemy) {
+                    ctx.fillStyle = "#f0f"; ctx.beginPath(); ctx.arc(b.x, b.y, b.size||5, 0, Math.PI*2); ctx.fill(); 
+                } else if(b.isWave) {
+                    ctx.fillStyle = b.isLib ? "#f00" : "#0af";
+                    ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx));
+                    ctx.beginPath(); ctx.ellipse(0, 0, 15, 5, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
+                } else {
+                    ctx.fillStyle = b.color || "#ff0"; ctx.beginPath(); ctx.arc(b.x, b.y, b.size||5, 0, Math.PI*2); ctx.fill(); 
+                }
             });
             
-            ctx.fillStyle = p.invincible ? "#fff" : (p.shield>0 ? "#0ff" : p.color);
-            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
-            ctx.strokeStyle = "#fff"; ctx.stroke();
-            ctx.fillStyle = "#0f0"; ctx.fillRect(p.x-20, p.y+20, 40*(p.hp/p.maxHp), 5);
+            orbits.forEach(o => { ctx.fillStyle = "#0ff"; ctx.beginPath(); ctx.arc(o.x, o.y, o.size, 0, Math.PI*2); ctx.fill(); });
+            
+            if(player.cid === 0 && saveData.rookieAwakeStage >= 2) {
+                ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(player.x, player.y, 150, 0, Math.PI*2); ctx.stroke();
+            }
+
+            enemies.forEach(e => {
+                if(e.isRaidBoss) {
+                    if(e.rStage >= 2) { ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.beginPath(); ctx.arc(e.x, e.y, 200, 0, Math.PI*2); ctx.stroke(); }
+                    if(e.rLib > 0) {
+                        let grad = ctx.createLinearGradient(e.x, e.y-e.size, e.x, e.y+e.size);
+                        grad.addColorStop(0, "black"); grad.addColorStop(1, "red"); ctx.fillStyle = grad;
+                    } else { ctx.fillStyle = e.color; }
+                    ctx.beginPath(); ctx.arc(e.x, e.y, e.size, 0, Math.PI*2); ctx.fill();
+                    ctx.strokeStyle = "white"; ctx.lineWidth = 4; ctx.stroke();
+                    ctx.fillStyle = "red"; ctx.fillRect(e.x-e.size, e.y-e.size-15, e.size*2*(e.hp/e.maxHp), 8);
+                    ctx.fillStyle = "#ff00ff"; ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center";
+                    ctx.fillText(e.rStage > 0 ? ROOKIE_NAMES[e.rStage] : e.name, e.x, e.y+e.size+30);
+                } else {
+                    ctx.fillStyle = e.isBoss ? "#800" : "#f44"; ctx.fillRect(e.x-e.size, e.y-e.size, e.size*2, e.size*2);
+                    ctx.fillStyle = "red"; ctx.fillRect(e.x-e.size, e.y-e.size-10, e.size*2*(e.hp/e.maxHp), 6);
+                    if(e.isBoss) { ctx.fillStyle = "white"; ctx.font = "20px sans-serif"; ctx.textAlign = "center"; ctx.fillText("BOSS", e.x, e.y+e.size+20); }
+                }
+            });
+
+            if(libTimer > 0) {
+                let grad = ctx.createLinearGradient(player.x, player.y-player.size, player.x, player.y+player.size);
+                grad.addColorStop(0, "black"); grad.addColorStop(1, "red"); ctx.fillStyle = grad;
+                ctx.fillStyle = "rgba(255,0,0,0.2)"; ctx.beginPath(); ctx.arc(player.x, player.y, 50, 0, Math.PI*2); ctx.fill();
+            } else {
+                ctx.fillStyle = player.color;
+            }
+            ctx.beginPath(); ctx.arc(player.x, player.y, player.size, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+            
+            ctx.fillStyle = "#f00"; ctx.fillRect(player.x-25, player.y+22, 50, 6);
+            ctx.fillStyle = "#0f0"; ctx.fillRect(player.x-25, player.y+22, 50*(player.hp/player.maxHp), 6);
+
+            ctx.textAlign = "center"; ctx.font = "bold 16px sans-serif";
+            damageTexts.forEach(d => { ctx.fillStyle = d.color||"white"; ctx.globalAlpha = d.life/20; ctx.fillText(d.text, d.x, d.y); });
+            ctx.globalAlpha = 1;
         }
 
         function end(win) {
-            state = 'RES';
+            state = 'RESULT';
             document.getElementById('ui-layer').classList.add('hidden');
             document.getElementById('screen-result').classList.remove('hidden');
-            document.getElementById('res-title').innerText = win ? "STAGE CLEAR" : "GAME OVER";
-            document.getElementById('res-title').style.color = win ? "#0f0" : "#f00";
+            let titleEl = document.getElementById('res-title');
+            titleEl.innerText = win ? "STAGE CLEAR!!" : "GAME OVER"; titleEl.style.color = win ? "#0f0" : "#f00";
             
-            let rew = win ? (isRaid ? 5000 : 1000) : 100;
-            if(win && isRaid) saveData.awakeData[raidId] = (saveData.awakeData[raidId]||0) + 1;
-            if(win && !isRaid && stage === saveData.unlockedStage && stage<30) saveData.unlockedStage++;
-            saveData.coins += rew; document.getElementById('res-coins').innerText = rew; save();
+            if(win) {
+                scoreCoins += 1000;
+                if(isRaidMode) {
+                    scoreCoins += 5000; 
+                    if(raidTargetCharId === 0) {
+                        saveData.rookieAwakeStage = raidTargetRookieStage;
+                        titleEl.innerText = `${ROOKIE_NAMES[raidTargetRookieStage]} AWAKENED!`; titleEl.style.color = "#ff00ff";
+                    } else if(!saveData.awakenedChars.includes(raidTargetCharId)) {
+                        saveData.awakenedChars.push(raidTargetCharId);
+                        titleEl.innerText = "AWAKENING SUCCESS!!"; titleEl.style.color = "#ff00ff";
+                    }
+                } else if(saveData.unlockedStage === currentStage && currentStage < 30) { saveData.unlockedStage++; }
+            }
+            saveData.coins += scoreCoins; saveGame(); document.getElementById('res-coins').innerText = scoreCoins;
         }
 
-        function loop() { if(state === 'PLAYING') { update(); draw(); } if(state !== 'RES') requestAnimationFrame(loop); }
-        window.addEventListener('mousemove', e => { tPos.x = e.clientX; tPos.y = e.clientY; });
-        window.addEventListener('touchmove', e => { tPos.x = e.touches[0].clientX; tPos.y = e.touches[0].clientY; });
+        function loop() { if(state === 'PLAYING') { update(); draw(); requestAnimationFrame(loop); } }
+        window.addEventListener('mousemove', e => { if(state === 'PLAYING') { targetPos.x = e.clientX; targetPos.y = e.clientY; } });
+        window.addEventListener('touchmove', e => { if(state === 'PLAYING') { targetPos.x = e.touches[0].clientX; targetPos.y = e.touches[0].clientY; } });
         document.getElementById('btn-restart').onclick = openHome;
 
-        load();
+        loadData();
     </script>
 </body>
 </html>
