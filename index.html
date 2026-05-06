@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>JS SURVIVOR - ULTIMATE UPDATE</title>
+    <title>JS SURVIVOR - SKILL UPDATE</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #050510; font-family: sans-serif; touch-action: none; color: white; user-select: none; }
         canvas { display: block; }
@@ -38,7 +38,7 @@
     <div id="screen-login" class="overlay">
         <h1>JS SURVIVOR</h1>
         <p>プレイヤー名を入力してください</p>
-        <input type="text" id="player-name-input" placeholder="名前 (最大10文字)" maxlength="10">
+        <input type="text" id="player-name-input" placeholder="名前" maxlength="10">
         <button id="btn-login">ゲーム開始</button>
     </div>
 
@@ -108,33 +108,31 @@
         function resize() { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; }
         window.addEventListener('resize', resize); resize();
 
-        // データ管理(全体的なキャラステータス底上げ、カミサマ調整)
         let saveData = { name: "", coins: 0, unlockedStage: 1, chars: [0], selectedChar: 0, awakenedChars: [], rookieAwakeStage: 0 };
         
         const CHAR_DATA = [
-            { id: 0, name: "ルーキー", color: "#09f", hp: 150, spd: 4.2, atk: 25, multi: 1, orb: 0, mag: 120, desc: "無限の可能性" },
-            { id: 1, name: "ニンジャ", color: "#333", hp: 100, spd: 6.0, atk: 20, multi: 1, orb: 0, mag: 100, desc: "超高速・低耐久" },
-            { id: 2, name: "タンク", color: "#8b4513", hp: 400, spd: 2.8, atk: 30, multi: 1, orb: 0, mag: 150, desc: "鈍足・超高耐久" },
-            { id: 3, name: "スナイパ", color: "#0f0", hp: 120, spd: 3.8, atk: 60, multi: 1, orb: 0, mag: 80, desc: "高火力の一撃" },
-            { id: 4, name: "マグネ", color: "#f0f", hp: 150, spd: 4.0, atk: 22, multi: 1, orb: 0, mag: 400, desc: "経験値を広範囲回収" },
-            { id: 5, name: "パラディン", color: "#ffd700", hp: 200, spd: 3.5, atk: 25, multi: 1, orb: 1, mag: 120, desc: "初期バリア持ち" },
-            { id: 6, name: "ガンナー", color: "#ff4500", hp: 140, spd: 4.2, atk: 18, multi: 3, orb: 0, mag: 100, desc: "初期から3方向射撃" },
-            { id: 7, name: "ヴァンピィ", color: "#800080", hp: 150, spd: 4.5, atk: 25, multi: 1, orb: 0, mag: 120, desc: "敵を倒すと微回復" },
-            { id: 8, name: "サイボーグ", color: "#708090", hp: 250, spd: 3.5, atk: 40, multi: 1, orb: 0, mag: 100, desc: "高い攻防力" },
-            { id: 9, name: "エスパー", color: "#00ffff", hp: 120, spd: 4.8, atk: 20, multi: 1, orb: 3, mag: 150, desc: "初期バリア3個" },
-            { id: 10, name: "バーサーカ", color: "#b22222", hp: 180, spd: 4.8, atk: 55, multi: 1, orb: 0, mag: 90, desc: "高火力・高速" },
-            { id: 11, name: "ゴースト", color: "#e6e6fa", hp: 90, spd: 5.5, atk: 22, multi: 1, orb: 0, mag: 250, desc: "低HPだが回収と足が速い" },
-            { id: 12, name: "サムライ", color: "#cd5c5c", hp: 160, spd: 4.5, atk: 45, multi: 1, orb: 0, mag: 110, desc: "バランスの良い高火力" },
-            { id: 13, name: "リッチ", color: "#483d8b", hp: 130, spd: 4.0, atk: 35, multi: 2, orb: 1, mag: 130, desc: "魔法使い。多機能" },
-            { id: 14, name: "ギャンブラ", color: "#ff1493", hp: 150, spd: 4.2, atk: 15, multi: 1, orb: 0, mag: 150, desc: "コイン獲得量2倍" },
-            { id: 15, name: "ドクター", color: "#ffffff", hp: 180, spd: 3.8, atk: 20, multi: 1, orb: 0, mag: 100, desc: "レベルアップ時全回復" },
-            { id: 16, name: "アーチャー", color: "#228b22", hp: 140, spd: 4.6, atk: 35, multi: 2, orb: 0, mag: 110, desc: "2方向・高威力" },
-            { id: 17, name: "エイリアン", color: "#7fff00", hp: 150, spd: 5.0, atk: 30, multi: 1, orb: 0, mag: 80, desc: "謎の宇宙人" },
-            { id: 18, name: "ドラゴン", color: "#dc143c", hp: 300, spd: 4.0, atk: 50, multi: 1, orb: 1, mag: 100, desc: "圧倒的なステータス" },
-            { id: 19, name: "カミサマ", color: "#ffea00", hp: 500, spd: 5.5, atk: 70, multi: 3, orb: 3, mag: 300, desc: "とても強い" }
+            { id: 0, name: "ルーキー", color: "#09f", hp: 150, spd: 4.2, atk: 25, multi: 1, orb: 0, mag: 120, desc: "進化する者" },
+            { id: 1, name: "ニンジャ", color: "#333", hp: 100, spd: 6.0, atk: 20, multi: 1, orb: 0, mag: 100, desc: "定期的に八方クナイ" },
+            { id: 2, name: "タンク", color: "#8b4513", hp: 400, spd: 2.8, atk: 30, multi: 1, orb: 0, mag: 150, desc: "確率でダメ無効＆反射" },
+            { id: 3, name: "スナイパ", color: "#0f0", hp: 120, spd: 3.8, atk: 60, multi: 1, orb: 0, mag: 80, desc: "貫通レーザー発射" },
+            { id: 4, name: "マグネ", color: "#f0f", hp: 150, spd: 4.0, atk: 22, multi: 1, orb: 0, mag: 400, desc: "回収範囲が広がり続ける" },
+            { id: 5, name: "パラディン", color: "#ffd700", hp: 200, spd: 3.5, atk: 25, multi: 1, orb: 1, mag: 120, desc: "時間経過でバリア復活" },
+            { id: 6, name: "ガンナー", color: "#ff4500", hp: 140, spd: 4.2, atk: 18, multi: 3, orb: 0, mag: 100, desc: "通常弾の連射速度が2倍" },
+            { id: 7, name: "ヴァンピィ", color: "#800080", hp: 150, spd: 4.5, atk: 25, multi: 1, orb: 0, mag: 120, desc: "敵撃破でHP微回復" },
+            { id: 8, name: "サイボーグ", color: "#708090", hp: 250, spd: 3.5, atk: 40, multi: 1, orb: 0, mag: 100, desc: "HPが減るほど攻撃UP" },
+            { id: 9, name: "エスパー", color: "#00ffff", hp: 120, spd: 4.8, atk: 20, multi: 1, orb: 3, mag: 150, desc: "被弾時に念動波で反撃" },
+            { id: 10, name: "バーサーカ", color: "#b22222", hp: 180, spd: 4.8, atk: 55, multi: 1, orb: 0, mag: 90, desc: "敵を倒すほど攻撃力無限UP" },
+            { id: 11, name: "ゴースト", color: "#e6e6fa", hp: 90, spd: 5.5, atk: 22, multi: 1, orb: 0, mag: 250, desc: "ギミックダメージ無効" },
+            { id: 12, name: "サムライ", color: "#cd5c5c", hp: 160, spd: 4.5, atk: 45, multi: 1, orb: 0, mag: 110, desc: "定期的に広範囲の斬撃" },
+            { id: 13, name: "リッチ", color: "#483d8b", hp: 130, spd: 4.0, atk: 35, multi: 2, orb: 1, mag: 130, desc: "敵撃破時、確率で魔法弾" },
+            { id: 14, name: "ギャンブラ", color: "#ff1493", hp: 150, spd: 4.2, atk: 15, multi: 1, orb: 0, mag: 150, desc: "所持コインが多いほど高火力" },
+            { id: 15, name: "ドクター", color: "#ffffff", hp: 180, spd: 3.8, atk: 20, multi: 1, orb: 0, mag: 100, desc: "毎秒HPが自動回復" },
+            { id: 16, name: "アーチャー", color: "#228b22", hp: 140, spd: 4.6, atk: 35, multi: 2, orb: 0, mag: 110, desc: "ホーミングアロー" },
+            { id: 17, name: "エイリアン", color: "#7fff00", hp: 150, spd: 5.0, atk: 30, multi: 1, orb: 0, mag: 80, desc: "定期的にワープ＆爆弾設置" },
+            { id: 18, name: "ドラゴン", color: "#dc143c", hp: 300, spd: 4.0, atk: 50, multi: 1, orb: 1, mag: 100, desc: "前方に炎のブレスを吐く" },
+            { id: 19, name: "カミサマ", color: "#ffea00", hp: 500, spd: 5.5, atk: 70, multi: 3, orb: 3, mag: 300, desc: "たまに画面全域に神の雷" }
         ];
 
-        // ルーキー覚醒段階の名前定義
         const ROOKIE_NAMES = ["ルーキー", "ヒューマン", "ヒューマン v1", "ヒューマン v2", "ヒューマン v3", "ヒューマン v4"];
 
         function loadData() {
@@ -146,14 +144,13 @@
         }
         function saveGame() { localStorage.setItem('jsSurvivorUltraSave', JSON.stringify(saveData)); }
 
-        // --- ゲーム内変数 ---
         let state = 'LOGIN', playTime = 300, scoreCoins = 0, frameCount = 0;
-        let isBossActive = false, bossDefeated = false, currentStage = 1;
+        let isBossActive = false, currentStage = 1;
         let player, enemies, bullets, gems, orbits, damageTexts, hazards;
         let targetPos = { x: 0, y: 0 };
         let isRaidMode = false, raidTargetCharId = 0, raidTargetRookieStage = 0;
 
-        let libTimer = 0, libCool = 0; // v4能力解放タイマー
+        let libTimer = 0, libCool = 0; 
 
         const skillPool = [
             { id: 'multi', name: '連射', desc: '弾数+1' },
@@ -164,7 +161,6 @@
             { id: 'heal', name: '回復', desc: 'HPを50%回復' }
         ];
 
-        // --- UI操作 ---
         document.getElementById('btn-login').onclick = () => {
             let n = document.getElementById('player-name-input').value.trim();
             if(!n) return alert("名前を入力してください!");
@@ -214,7 +210,6 @@
         };
         document.getElementById('btn-close-chars').onclick = openHome;
 
-        // レイドバトル画面
         document.getElementById('btn-raid-menu').onclick = () => {
             document.getElementById('screen-home').classList.add('hidden');
             const list = document.getElementById('raid-char-list');
@@ -264,7 +259,6 @@
             resDiv.style.display = 'block'; saveGame(); document.getElementById('disp-coins').innerText = saveData.coins;
         };
 
-        // --- ゲーム進行 ---
         document.getElementById('btn-start').onclick = () => { isRaidMode = false; initGame(); };
         function startRaid(targetCharId, targetRStage) { isRaidMode = true; raidTargetCharId = targetCharId; raidTargetRookieStage = targetRStage; initGame(); }
 
@@ -276,14 +270,12 @@
             
             player = {
                 x: width/2, y: height/2, size: 15, 
-                hp: c.hp * (isAwakened ? 2 : 1), 
-                maxHp: c.hp * (isAwakened ? 2 : 1), 
-                color: c.color,
-                level: 1, exp: 0, maxExp: 3, cid: c.id,
-                dodgeCount: 0, defenseMulti: isHuman ? 0.5 : 1, // ヒューマンは防御力UP
+                hp: c.hp * (isAwakened ? 2 : 1), maxHp: c.hp * (isAwakened ? 2 : 1), 
+                color: c.color, level: 1, exp: 0, maxExp: 3, cid: c.id,
+                dodgeCount: 0, defenseMulti: isHuman ? 0.5 : 1, berserkStacks: 0,
                 stats: { 
                     multi: c.multi + (isAwakened ? 1 : 0), 
-                    power: c.atk * (isAwakened ? 1.5 : 1) + (saveData.rookieAwakeStage >= 4 ? 50 : 0), // v3で攻撃力超UP
+                    power: c.atk * (isAwakened ? 1.5 : 1) + (saveData.rookieAwakeStage >= 4 ? 50 : 0),
                     speed: c.spd * (isAwakened ? 1.2 : 1), 
                     orbit: c.orb + (isAwakened ? 1 : 0), 
                     magnet: c.mag * (isAwakened ? 1.5 : 1) 
@@ -295,7 +287,7 @@
 
             enemies = []; bullets = []; gems = []; orbits = []; damageTexts = []; hazards = [];
             scoreCoins = 0; playTime = 300; frameCount = 0;
-            isBossActive = false; bossDefeated = false;
+            isBossActive = false;
             libTimer = 0; libCool = 0;
             
             targetPos = { x: player.x, y: player.y }; 
@@ -311,14 +303,12 @@
             state = 'LEVELUP';
             targetPos.x = player.x; targetPos.y = player.y;
             player.level++; player.exp -= player.maxExp; player.maxExp = Math.floor(3 + player.level * 1.5);
-            if(player.cid === 15) player.hp = player.maxHp; 
 
             document.getElementById('ui-level').innerText = player.level;
             const container = document.getElementById('skill-container');
             container.innerHTML = '';
             
             let pool = [...skillPool];
-            // ルーキーv4 の能力解放スキル
             if(player.cid === 0 && saveData.rookieAwakeStage >= 5 && libTimer <= 0 && libCool <= 0) {
                 pool.push({id:'liberation', name:'能力解放', desc:'1分間超強化！(CT90秒)'});
             }
@@ -335,7 +325,7 @@
                     if(s.id === 'magnet') player.stats.magnet += 60;
                     if(s.id === 'speed') player.stats.speed += 0.5;
                     if(s.id === 'heal') player.hp = Math.min(player.maxHp, player.hp + player.maxHp*0.5);
-                    if(s.id === 'liberation') libTimer = 3600; // 60秒
+                    if(s.id === 'liberation') libTimer = 3600; 
                     
                     state = 'PLAYING'; targetPos.x = player.x; targetPos.y = player.y;
                     document.getElementById('screen-levelup').classList.add('hidden'); loop();
@@ -353,49 +343,45 @@
             let timeMult = (300 - playTime) / 60;
             let hp = 20 * (1 + timeMult*2) * (1 + currentStage*0.2);
             let spd = 1.5 + timeMult*0.5 + currentStage*0.05;
-            if(currentStage % 5 === 0 && Math.random() < 0.2) { spd *= 2; hp /= 2; }
             enemies.push({ x, y, size: 12, hp: hp, maxHp: hp, speed: spd, isBoss: false });
         }
 
         function spawnBoss() {
             isBossActive = true;
             document.getElementById('boss-notice').style.display = 'block';
-            enemies = []; hazards = [];
+            enemies = []; hazards = []; 
             
             if (isRaidMode) {
                 document.getElementById('boss-notice').innerText = "WARNING: AWAKENED BOSS!!";
                 setTimeout(() => document.getElementById('boss-notice').style.display = 'none', 3000);
                 
-                let hp = (raidTargetCharId === 0) ? 100000 : 50000 * (1 + currentStage * 0.2); 
+                // ボスをより強力に設定
+                let hp = (raidTargetCharId === 0) ? 150000 : 80000 * (1 + currentStage * 0.3); 
                 let c = CHAR_DATA[raidTargetCharId];
                 enemies.push({
-                    x: width/2, y: -120, size: 80, hp: hp, maxHp: hp, speed: c.spd * 0.6, 
+                    x: width/2, y: -120, size: 80, hp: hp, maxHp: hp, speed: c.spd * 0.7, 
                     isBoss: true, isRaidBoss: true, color: c.color, name: c.name, atk: c.atk, multi: c.multi,
                     rStage: raidTargetRookieStage, rDodge: 0, rLib: 0
                 });
             } else {
                 document.getElementById('boss-notice').innerText = "STAGE BOSS!!";
                 setTimeout(() => document.getElementById('boss-notice').style.display = 'none', 3000);
-                let hp = 8000 * (1 + currentStage * 0.5);
+                // ボスのHPを大きく強化
+                let hp = 15000 * (1 + currentStage * 0.8);
                 enemies.push({
-                    x: width/2, y: -120, size: 100, hp: hp, maxHp: hp, speed: 0.8 + currentStage*0.02, 
+                    x: width/2, y: -120, size: 100, hp: hp, maxHp: hp, speed: 1.0 + currentStage*0.03, 
                     isBoss: true, stageIdx: currentStage 
                 });
             }
         }
 
-        function applyStageGimmicks() {
-            if(isBossActive) return;
-            // 全30ステージのギミックを数式で変動
-            let gType = currentStage % 6; 
-            if(frameCount % (180 - currentStage*2) === 0) {
-                if(gType === 1) hazards.push({ x: Math.random()*width, y: Math.random()*height, size: 50+currentStage*2, life: 300, type:'poison' });
-                if(gType === 2) hazards.push({ x: Math.random()*width, y: Math.random()*height, size: 80, life: 200, type:'slow' });
-                if(gType === 3) hazards.push({ x: Math.random()*width, y: -50, size: 30, life: 400, type:'meteor', vx: (Math.random()-0.5)*5, vy: 3 });
+        function takeDamage(baseDmg, isHazard = false) {
+            if(player.cid === 11 && isHazard) return; // ゴーストのギミック無効
+            if(player.cid === 2 && Math.random() < 0.25) { // タンクの防御＆反射
+                damageTexts.push({x: player.x, y: player.y-20, text: "BLOCK", life: 30, color:"#8b4513"});
+                enemies.forEach(e => { if(Math.hypot(player.x-e.x, player.y-e.y)<150) e.hp -= player.stats.power; });
+                return;
             }
-        }
-
-        function takeDamage(baseDmg) {
             if(player.cid === 0 && saveData.rookieAwakeStage >= 3) {
                 player.dodgeCount = (player.dodgeCount + 1) % 3;
                 if(player.dodgeCount === 0) {
@@ -403,8 +389,14 @@
                     return;
                 }
             }
+            if(player.cid === 9) { // エスパーの被弾時反撃
+                for(let i=0; i<4; i++) {
+                    bullets.push({x: player.x, y: player.y, vx: Math.cos(i*Math.PI/2)*8, vy: Math.sin(i*Math.PI/2)*8, life: 40, dmg: player.stats.power, isEnemy: false, color:"#0ff"});
+                }
+            }
+
             let dmg = baseDmg * player.defenseMulti;
-            if(libTimer > 0) dmg *= 0.1; // v4解放中は被ダメ10%
+            if(libTimer > 0) dmg *= 0.1;
             player.hp -= dmg;
             if(player.hp <= 0) end(false);
         }
@@ -413,11 +405,16 @@
             if(state !== 'PLAYING') return;
             frameCount++;
 
-            // 能力解放タイマー
+            // 動的ステータス計算（キャラ固有）
+            let p = player.stats.power;
+            if (player.cid === 8) p *= (2 - player.hp/player.maxHp); // サイボーグ
+            if (player.cid === 10) p += player.berserkStacks; // バーサーカ
+            if (player.cid === 14) p += Math.log10(saveData.coins + 1) * 10; // ギャンブラ
+
             if(libTimer > 0) {
                 libTimer--;
                 document.getElementById('liberation-ui').innerText = `能力解放中: ${Math.ceil(libTimer/60)}s`;
-                if(frameCount % 300 === 0) { // 5秒毎に周囲にダメージ
+                if(frameCount % 300 === 0) {
                     enemies.forEach(e => {
                         if(Math.hypot(player.x-e.x, player.y-e.y) < 300) {
                             e.hp -= e.maxHp / 3;
@@ -425,46 +422,79 @@
                         }
                     });
                 }
-                if(libTimer <= 0) libCool = 5400; // 90秒
+                if(libTimer <= 0) libCool = 5400;
             } else if (libCool > 0) {
                 libCool--;
                 document.getElementById('liberation-ui').innerText = "";
             }
 
-            // ヒューマン自然回復
-            if(player.cid === 0 && saveData.rookieAwakeStage >= 1 && frameCount % 60 === 0) {
-                player.hp = Math.min(player.maxHp, player.hp + player.maxHp / 5);
-            }
-
             if(frameCount % 60 === 0) {
                 playTime--; scoreCoins += (player.cid === 14 ? 4 : 2);
-                if(playTime <= 180 && !isBossActive && !bossDefeated) spawnBoss();
+                // ドクター回復 / ヒューマン回復
+                if(player.cid === 15) player.hp = Math.min(player.maxHp, player.hp + 5); 
+                if(player.cid === 0 && saveData.rookieAwakeStage >= 1) player.hp = Math.min(player.maxHp, player.hp + player.maxHp / 5);
+                // パラディンバリア増加
+                if(player.cid === 5 && player.stats.orbit < 10 && frameCount % 300 === 0) player.stats.orbit++;
+                // マグネ回収範囲増加
+                if(player.cid === 4) player.stats.magnet += 1;
+
+                if(playTime <= 180 && !isBossActive) spawnBoss();
                 if(playTime <= 0) end(true);
             }
 
-            // 移動
+            // キャラ固有スキル（特殊弾・アクション）
+            if(frameCount % 120 === 0) {
+                if(player.cid === 1) { // ニンジャ クナイ
+                    for(let i=0; i<8; i++){ bullets.push({x: player.x, y: player.y, vx: Math.cos(i*Math.PI/4)*12, vy: Math.sin(i*Math.PI/4)*12, life: 50, dmg: p, isEnemy: false, color:"#aaa"}); }
+                }
+                if(player.cid === 12) { // サムライ 斬撃
+                    bullets.push({x: player.x, y: player.y, vx: 0, vy: 0, life: 10, dmg: p*4, isEnemy: false, size: 120, isMelee: true});
+                }
+                if(player.cid === 17) { // エイリアン ワープ＆爆破
+                    bullets.push({x: player.x, y: player.y, vx: 0, vy: 0, life: 30, dmg: p*3, isEnemy: false, size: 100, isBomb: true});
+                    player.x = Math.random()*width; player.y = Math.random()*height;
+                }
+            }
+            if(player.cid === 3 && frameCount % 150 === 0) { // スナイパ 貫通レーザー
+                let a = Math.atan2(targetPos.y-player.y, targetPos.x-player.x);
+                bullets.push({x: player.x, y: player.y, vx: Math.cos(a)*25, vy: Math.sin(a)*25, life: 100, dmg: p*2.5, isEnemy: false, isPiercing: true, color:"#0f0", size: 8});
+            }
+            if(player.cid === 18 && frameCount % 180 > 140 && frameCount % 4 === 0) { // ドラゴン ブレス
+                let a = Math.atan2(targetPos.y-player.y, targetPos.x-player.x) + (Math.random()-0.5)*0.6;
+                bullets.push({x: player.x, y: player.y, vx: Math.cos(a)*12, vy: Math.sin(a)*12, life: 35, dmg: p*0.6, isEnemy: false, color:"#f40", size: 18});
+            }
+            if(player.cid === 19 && frameCount % 600 === 0) { // カミサマ 神の雷
+                enemies.forEach(e => { e.hp -= p * 5; damageTexts.push({x: e.x, y: e.y, text: Math.floor(p*5), life: 40, color: "#ffea00"}); });
+            }
+
             let spd = player.stats.speed;
-            if(libTimer > 0) spd *= 2.5; // v4高速
+            if(libTimer > 0) spd *= 2.5; 
             let dx = targetPos.x - player.x, dy = targetPos.y - player.y;
             player.x += dx * 0.1 * (spd/4); player.y += dy * 0.1 * (spd/4);
 
-            applyStageGimmicks();
+            if(!isBossActive) {
+                let gType = currentStage % 6; 
+                if(frameCount % (180 - currentStage*2) === 0) {
+                    if(gType === 1) hazards.push({ x: Math.random()*width, y: Math.random()*height, size: 50+currentStage*2, life: 300, type:'poison' });
+                    if(gType === 2) hazards.push({ x: Math.random()*width, y: Math.random()*height, size: 80, life: 200, type:'slow' });
+                    if(gType === 3) hazards.push({ x: Math.random()*width, y: -50, size: 30, life: 400, type:'meteor', vx: (Math.random()-0.5)*5, vy: 3 });
+                }
+            }
 
-            // 射撃
-            let shotInterval = (libTimer > 0) ? 5 : 15;
+            // 射撃（ガンナーは連射速度2倍）
+            let shotInterval = (libTimer > 0) ? 5 : (player.cid === 6 ? 7 : 15);
             if(frameCount % shotInterval === 0 && enemies.length > 0) {
                 let target = enemies[0];
                 let minDist = Math.hypot(player.x-target.x, player.y-target.y);
                 enemies.forEach(e => { let d = Math.hypot(player.x-e.x, player.y-e.y); if(d < minDist) { minDist = d; target = e; } });
                 let angle = Math.atan2(target.y-player.y, target.x-player.x);
-                let p = player.stats.power;
                 let isHuman = (player.cid === 0 && saveData.rookieAwakeStage >= 1);
                 
                 for(let i=0; i<player.stats.multi; i++){
                     let a = angle + (i - (player.stats.multi-1)/2) * 0.2;
                     bullets.push({
                         x: player.x, y: player.y, vx: Math.cos(a)*12, vy: Math.sin(a)*12, 
-                        life: 50, dmg: p, isEnemy: false, isWave: isHuman, isLib: (libTimer>0)
+                        life: 50, dmg: p, isEnemy: false, isWave: isHuman, isLib: (libTimer>0), isHoming: (player.cid === 16)
                     });
                 }
             }
@@ -481,7 +511,16 @@
             }
 
             for(let i=bullets.length-1; i>=0; i--){
-                let b = bullets[i]; b.x += b.vx; b.y += b.vy; b.life--;
+                let b = bullets[i]; 
+                // ホーミング弾 (アーチャー)
+                if(b.isHoming && enemies.length > 0) {
+                    let t = enemies[0]; let md = Math.hypot(b.x-t.x, b.y-t.y);
+                    enemies.forEach(e => { let d = Math.hypot(b.x-e.x, b.y-e.y); if(d<md){md=d; t=e;} });
+                    let a = Math.atan2(t.y-b.y, t.x-b.x);
+                    b.vx = b.vx*0.95 + Math.cos(a)*0.8; b.vy = b.vy*0.95 + Math.sin(a)*0.8;
+                }
+                b.x += b.vx; b.y += b.vy; b.life--;
+                
                 if(b.isEnemy && Math.hypot(player.x-b.x, player.y-b.y) < player.size + (b.size||5)) {
                     takeDamage(b.dmg);
                     bullets.splice(i, 1); continue;
@@ -489,7 +528,6 @@
                 if(b.life <= 0) bullets.splice(i, 1);
             }
 
-            // ルーキーv1オーラ効果範囲
             let pAura = (player.cid === 0 && saveData.rookieAwakeStage >= 2) ? 150 : 0;
 
             for(let ei = enemies.length-1; ei>=0; ei--) {
@@ -500,18 +538,14 @@
                 
                 e.x += Math.cos(angle) * eSpd; e.y += Math.sin(angle) * eSpd;
 
-                // 敵（ボス）の行動パターン
                 if(e.isBoss) {
                     if (e.isRaidBoss) {
-                        if(e.rStage >= 5 && frameCount % 600 === 0) e.rLib = 300; // ボスv4: 定期的に能力解放
-                        if(e.rLib > 0) { e.rLib--; e.speed = 10; } else { e.speed = CHAR_DATA[0].spd * 0.6; }
-                        
+                        if(e.rStage >= 5 && frameCount % 600 === 0) e.rLib = 300;
+                        if(e.rLib > 0) { e.rLib--; e.speed = 10; } else { e.speed = CHAR_DATA[0].spd * 0.7; }
                         if(e.rStage >= 2 && Math.hypot(player.x-e.x, player.y-e.y) < 200) {
-                            // ボスv1オーラ
                             let dx = player.x - e.x, dy = player.y - e.y;
-                            player.x -= dx * 0.05; player.y -= dy * 0.05; // 擬似スロー(引き戻し)
+                            player.x -= dx * 0.05; player.y -= dy * 0.05; 
                         }
-
                         if(frameCount % (e.rLib > 0 ? 10 : 40) === 0) {
                             let pwr = e.atk * (e.rStage >= 4 ? 2 : 1);
                             for(let i=0; i<e.multi + (e.rStage >= 1 ? 2 : 0); i++){
@@ -520,27 +554,26 @@
                             }
                         }
                     } else {
-                        // 全30ステージのボス行動
                         if(frameCount % 60 === 0) {
                             let bType = e.stageIdx % 5;
                             let bShots = Math.floor(e.stageIdx / 3) + 4;
-                            if(bType === 0) { // 全方位
+                            if(bType === 0) { 
                                 for(let i=0; i<bShots; i++){
                                     let a = (Math.PI*2/bShots) * i;
                                     bullets.push({x: e.x, y: e.y, vx: Math.cos(a)*5, vy: Math.sin(a)*5, life: 120, dmg: 15+e.stageIdx, isEnemy: true});
                                 }
-                            } else if(bType === 1) { // 渦巻き
+                            } else if(bType === 1) { 
                                 let a = frameCount * 0.1 + e.stageIdx;
                                 bullets.push({x: e.x, y: e.y, vx: Math.cos(a)*7, vy: Math.sin(a)*7, life: 100, dmg: 20, isEnemy: true});
-                            } else if(bType === 2) { // 突進
-                                e.speed = 12; setTimeout(()=>{if(e) e.speed = 1.0;}, 500);
-                            } else if(bType === 3) { // ばらまき
+                            } else if(bType === 2) { 
+                                e.speed = 15; setTimeout(()=>{if(e) e.speed = 1.0;}, 500);
+                            } else if(bType === 3) { 
                                 for(let i=0; i<3; i++){
                                     let a = angle + (Math.random()-0.5);
-                                    bullets.push({x: e.x, y: e.y, vx: Math.cos(a)*8, vy: Math.sin(a)*8, life: 80, dmg: 10, isEnemy: true});
+                                    bullets.push({x: e.x, y: e.y, vx: Math.cos(a)*8, vy: Math.sin(a)*8, life: 80, dmg: 15, isEnemy: true});
                                 }
-                            } else if(bType === 4) { // 召喚
-                                enemies.push({ x: e.x, y: e.y, size: 10, hp: 50, maxHp: 50, speed: 2, isBoss: false });
+                            } else if(bType === 4) { 
+                                enemies.push({ x: e.x, y: e.y, size: 10, hp: 50, maxHp: 50, speed: 2.5, isBoss: false });
                             }
                         }
                     }
@@ -548,33 +581,43 @@
 
                 for(let bi=bullets.length-1; bi>=0; bi--) {
                     let b = bullets[bi];
-                    if(!b.isEnemy && Math.hypot(e.x-b.x, e.y-b.y) < e.size + 10) {
-                        // ボスv2の無効化
+                    if(!b.isEnemy && Math.hypot(e.x-b.x, e.y-b.y) < e.size + (b.size||10)) {
                         if(e.isRaidBoss && e.rStage >= 3) {
                             e.rDodge = (e.rDodge + 1) % 3;
                             if(e.rDodge === 0) { bullets.splice(bi, 1); continue; }
                         }
                         e.hp -= b.dmg;
-                        if(b.isWave) { e.x += b.vx*1.5; e.y += b.vy*1.5; } // ノックバック
+                        if(b.isWave) { e.x += b.vx*1.5; e.y += b.vy*1.5; }
                         damageTexts.push({x: e.x, y: e.y, text: Math.floor(b.dmg), life: 20});
-                        bullets.splice(bi, 1);
+                        if(!b.isPiercing && !b.isMelee && !b.isBomb) bullets.splice(bi, 1);
                     }
                 }
 
                 orbits.forEach(o => {
                     if(Math.hypot(e.x-o.x, e.y-o.y) < e.size + o.size && frameCount % 10 === 0) {
-                        e.hp -= player.stats.power;
-                        damageTexts.push({x: e.x, y: e.y, text: Math.floor(player.stats.power), life: 20});
+                        e.hp -= p;
+                        damageTexts.push({x: e.x, y: e.y, text: Math.floor(p), life: 20});
                     }
                 });
 
                 if(e.hp <= 0) {
-                    if(e.isBoss) { isBossActive = false; bossDefeated = true; scoreCoins += 1000; playTime = Math.min(playTime, 30); }
-                    if(player.cid === 7 && Math.random()<0.2) player.hp = Math.min(player.maxHp, player.hp+2);
-                    gems.push({x: e.x, y: e.y, val: e.isBoss ? 100 : 1});
-                    enemies.splice(ei, 1); scoreCoins += (e.isBoss ? 500 : 5);
+                    if(e.isBoss) { 
+                        // ★ ボス撃破で即クリアにする変更
+                        enemies = []; bullets = []; 
+                        end(true); return; 
+                    }
+                    if(player.cid === 7 && Math.random()<0.2) player.hp = Math.min(player.maxHp, player.hp+2); // ヴァンピィ回復
+                    if(player.cid === 10) player.berserkStacks += 1; // バーサーカ攻撃力アップ
+                    if(player.cid === 13 && Math.random()<0.2) { // リッチの魔法弾
+                        for(let i=0;i<3;i++){
+                            let a=Math.random()*Math.PI*2;
+                            bullets.push({x:e.x, y:e.y, vx:Math.cos(a)*5, vy:Math.sin(a)*5, life:60, dmg:p, isEnemy:false, color:"#808"});
+                        }
+                    }
+                    gems.push({x: e.x, y: e.y, val: 1});
+                    enemies.splice(ei, 1); scoreCoins += 5;
                 } else if(Math.hypot(player.x-e.x, player.y-e.y) < player.size + e.size) {
-                    takeDamage(e.isBoss ? 10 : 2);
+                    takeDamage(e.isBoss ? 20 : 3);
                 }
             }
 
@@ -583,9 +626,9 @@
                 if(h.type==='meteor') { h.x+=h.vx; h.y+=h.vy; }
                 h.life--;
                 if(Math.hypot(player.x-h.x, player.y-h.y) < player.size + h.size) {
-                    if(h.type==='poison' && frameCount % 10===0) takeDamage(3);
+                    if(h.type==='poison' && frameCount % 10===0) takeDamage(3, true);
                     if(h.type==='slow') player.x -= dx*0.08, player.y -= dy*0.08;
-                    if(h.type==='meteor') { takeDamage(20); h.life = 0; }
+                    if(h.type==='meteor') { takeDamage(25, true); h.life = 0; }
                 }
                 if(h.life <= 0) hazards.splice(i, 1);
             }
@@ -618,20 +661,22 @@
             gems.forEach(g => { ctx.fillStyle = "#0f8"; ctx.beginPath(); ctx.arc(g.x, g.y, 4, 0, Math.PI*2); ctx.fill(); });
             
             bullets.forEach(b => { 
-                if(b.isEnemy) {
+                if(b.isMelee || b.isBomb) {
+                    ctx.fillStyle = b.isMelee ? "rgba(255,255,255,0.3)" : "rgba(128,255,0,0.4)";
+                    ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); ctx.fill();
+                } else if(b.isEnemy) {
                     ctx.fillStyle = "#f0f"; ctx.beginPath(); ctx.arc(b.x, b.y, b.size||5, 0, Math.PI*2); ctx.fill(); 
                 } else if(b.isWave) {
                     ctx.fillStyle = b.isLib ? "#f00" : "#0af";
                     ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx));
                     ctx.beginPath(); ctx.ellipse(0, 0, 15, 5, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
                 } else {
-                    ctx.fillStyle = "#ff0"; ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI*2); ctx.fill(); 
+                    ctx.fillStyle = b.color || "#ff0"; ctx.beginPath(); ctx.arc(b.x, b.y, b.size||5, 0, Math.PI*2); ctx.fill(); 
                 }
             });
             
             orbits.forEach(o => { ctx.fillStyle = "#0ff"; ctx.beginPath(); ctx.arc(o.x, o.y, o.size, 0, Math.PI*2); ctx.fill(); });
             
-            // v1オーラ描画
             if(player.cid === 0 && saveData.rookieAwakeStage >= 2) {
                 ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.arc(player.x, player.y, 150, 0, Math.PI*2); ctx.stroke();
@@ -639,9 +684,7 @@
 
             enemies.forEach(e => {
                 if(e.isRaidBoss) {
-                    if(e.rStage >= 2) {
-                        ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.beginPath(); ctx.arc(e.x, e.y, 200, 0, Math.PI*2); ctx.stroke();
-                    }
+                    if(e.rStage >= 2) { ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.beginPath(); ctx.arc(e.x, e.y, 200, 0, Math.PI*2); ctx.stroke(); }
                     if(e.rLib > 0) {
                         let grad = ctx.createLinearGradient(e.x, e.y-e.size, e.x, e.y+e.size);
                         grad.addColorStop(0, "black"); grad.addColorStop(1, "red"); ctx.fillStyle = grad;
@@ -658,11 +701,9 @@
                 }
             });
 
-            // プレイヤー描画
             if(libTimer > 0) {
                 let grad = ctx.createLinearGradient(player.x, player.y-player.size, player.x, player.y+player.size);
                 grad.addColorStop(0, "black"); grad.addColorStop(1, "red"); ctx.fillStyle = grad;
-                // v4オーラ
                 ctx.fillStyle = "rgba(255,0,0,0.2)"; ctx.beginPath(); ctx.arc(player.x, player.y, 50, 0, Math.PI*2); ctx.fill();
             } else {
                 ctx.fillStyle = player.color;
@@ -686,9 +727,9 @@
             titleEl.innerText = win ? "STAGE CLEAR!!" : "GAME OVER"; titleEl.style.color = win ? "#0f0" : "#f00";
             
             if(win) {
-                scoreCoins += 500;
+                scoreCoins += 1000;
                 if(isRaidMode) {
-                    scoreCoins += 3000; 
+                    scoreCoins += 5000; 
                     if(raidTargetCharId === 0) {
                         saveData.rookieAwakeStage = raidTargetRookieStage;
                         titleEl.innerText = `${ROOKIE_NAMES[raidTargetRookieStage]} AWAKENED!`; titleEl.style.color = "#ff00ff";
