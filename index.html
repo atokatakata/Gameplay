@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>JS SURVIVOR</title>
+<title>JS SURVIVOR v2</title>
 <style>
 body{margin:0;overflow:hidden;background:#050510;font-family:sans-serif;touch-action:none;color:white;user-select:none;}
 canvas{display:block;}
@@ -26,6 +26,7 @@ button:hover{border-color:#00ffcc;background:#2a2a4e;}
 .char-box.selected{background:#00ffcc;color:black;font-weight:bold;}
 #boss-notice{position:absolute;top:20%;width:100%;text-align:center;font-size:50px;color:red;font-weight:bold;text-shadow:2px 2px 0 #000;display:none;z-index:30;}
 #liberation-ui{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);font-size:24px;color:#ff0000;font-weight:bold;text-shadow:0 0 10px #000;}
+#crusher-effect{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:25;display:none;}
 </style>
 </head>
 <body>
@@ -38,7 +39,8 @@ button:hover{border-color:#00ffcc;background:#2a2a4e;}
 <div id="screen-home" class="overlay hidden">
   <h1>HOME</h1>
   <p>ようこそ、<span id="disp-name" style="color:#00ffcc;"></span> さん!</p>
-  <p>所持コイン: <span id="disp-coins" style="color:#ffcc00;font-size:24px;">0</span> C</p>
+  <p>所持コイン: <span id="disp-coins" style="color:#ffcc00;font-size:24px;">0</span> C
+     &nbsp;|&nbsp; フラグメント: <span id="disp-frags" style="color:#7df;font-size:22px;">0</span></p>
   <div>
     <select id="stage-select"></select>
     <button id="btn-start">通常出撃</button>
@@ -73,6 +75,7 @@ button:hover{border-color:#00ffcc;background:#2a2a4e;}
 <div id="screen-result" class="overlay hidden">
   <h1 id="res-title">FINISH</h1>
   <p style="font-size:24px;">獲得コイン: <span id="res-coins" style="color:#ffcc00;">0</span> C</p>
+  <p id="res-frags" style="font-size:22px;display:none;">フラグメント: <span id="res-frag-count" style="color:#7df;">+100</span></p>
   <button id="btn-restart">HOME</button>
 </div>
 <div id="ui-layer" class="hidden">
@@ -93,7 +96,7 @@ let width,height;
 function resize(){width=window.innerWidth;height=window.innerHeight;canvas.width=width;canvas.height=height;}
 window.addEventListener('resize',resize);resize();
 
-let saveData={name:"",coins:0,unlockedStage:1,chars:[0],selectedChar:0,awakenedChars:[],rookieAwakeStage:0,charAwakeStage:{}};
+let saveData={name:"",coins:0,fragments:0,unlockedStage:1,chars:[0],selectedChar:0,awakenedChars:[],rookieAwakeStage:0,charAwakeStage:{}};
 
 const CHAR_DATA=[
   {id:0,name:"ルーキー",color:"#09f",hp:150,spd:4.2,atk:25,multi:1,orb:0,mag:120,desc:"進化する者"},
@@ -118,207 +121,25 @@ const CHAR_DATA=[
   {id:19,name:"カミサマ",color:"#ffea00",hp:500,spd:5.5,atk:70,multi:3,orb:3,mag:300,desc:"たまに画面全域に神の雷"}
 ];
 
-// ===== 各キャラ覚醒段階データ v1〜v4（カミサマid:19除く）=====
-// 各キャラ固有・要素が被らない能力
 const CHAR_AWAKE={
-  // ニンジャ: 速度・クナイ数増加・クナイ貫通・クナイ嵐
-  1:{
-    names:["ニンジャ","ニンジャv1","ニンジャv2","ニンジャv3","ニンジャv4"],
-    bonuses:[
-      {},
-      {spd:1.3,ninjaCount:12},                                          // v1: 速度UP, クナイ12本
-      {spd:1.3,ninjaCount:12,ninjaGhost:true},                          // v2: 分身が後方クナイ自動発射
-      {spd:1.5,ninjaCount:16,ninjaGhost:true,ninjaPierce:true},         // v3: クナイ貫通, さらに速度UP
-      {spd:1.5,ninjaCount:16,ninjaGhost:true,ninjaPierce:true,ninjaStorm:true} // v4: 定期クナイ嵐(全方向32本)
-    ]
-  },
-  // タンク: ブロック率UP・移動トゲ展開・HP低下時無敵バリア・被弾怒り爆発
-  2:{
-    names:["タンク","タンクv1","タンクv2","タンクv3","タンクv4"],
-    bonuses:[
-      {},
-      {tankBlockRate:0.40},                                              // v1: ブロック率40%
-      {tankBlockRate:0.40,tankSpike:true},                               // v2: 移動時周囲にトゲ(接触ダメ)
-      {tankBlockRate:0.40,tankSpike:true,tankBarrier:true},              // v3: HP50%以下で自動無敵バリア(CT20s)
-      {tankBlockRate:0.40,tankSpike:true,tankBarrier:true,tankRage:true} // v4: 被弾ごと怒りゲージ→爆発
-    ]
-  },
-  // スナイパ: レーザー威力+発射間隔短縮・3方向・チャージ4倍・壁反射
-  3:{
-    names:["スナイパ","スナイパv1","スナイパv2","スナイパv3","スナイパv4"],
-    bonuses:[
-      {},
-      {sniperPow:1.5,sniperCD:100},                                      // v1: 威力+50%, 間隔短縮
-      {sniperPow:1.5,sniperCD:100,sniperTriple:true},                    // v2: 3方向同時発射
-      {sniperPow:2.0,sniperCD:80,sniperTriple:true,sniperCharge:true},   // v3: チャージレーザー追加(4倍ダメ)
-      {sniperPow:2.0,sniperCD:80,sniperTriple:true,sniperCharge:true,sniperBounce:true} // v4: 壁反射
-    ]
-  },
-  // マグネ: 敵引き寄せ・敵同士衝突ダメ・磁力フィールドダメ・全吸引
-  4:{
-    names:["マグネ","マグネv1","マグネv2","マグネv3","マグネv4"],
-    bonuses:[
-      {},
-      {magPull:true},                                                    // v1: 敵も引き寄せ+初期磁力+200
-      {magPull:true,magCrash:true},                                      // v2: 敵同士衝突でダメ
-      {magPull:true,magCrash:true,magField:true},                        // v3: 磁力フィールド継続ダメ
-      {magPull:true,magCrash:true,magField:true,magSuck:true}            // v4: 定期的に全敵を中央に吸引
-    ]
-  },
-  // パラディン: バリア数+速度UP・弾反射・聖域吹き飛ばし・即死防止
-  5:{
-    names:["パラディン","パラディンv1","パラディンv2","パラディンv3","パラディンv4"],
-    bonuses:[
-      {},
-      {orbBonus:2,paladinFast:true},                                     // v1: バリア初期+2, 復活速度UP
-      {orbBonus:2,paladinFast:true,paladinReflect:true},                 // v2: バリアが敵弾反射
-      {orbBonus:2,paladinFast:true,paladinReflect:true,paladinHoly:true},// v3: 聖域(周囲敵を定期吹き飛ばし)
-      {orbBonus:2,paladinFast:true,paladinReflect:true,paladinHoly:true,paladinRevive:true} // v4: 即死防止1回
-    ]
-  },
-  // ガンナー: 弾数+2・着弾爆発・貫通確率30%・バレットストーム
-  6:{
-    names:["ガンナー","ガンナーv1","ガンナーv2","ガンナーv3","ガンナーv4"],
-    bonuses:[
-      {},
-      {multiBonus:2},                                                    // v1: 弾数+2
-      {multiBonus:2,gunExplode:true},                                    // v2: 着弾時小爆発(範囲ダメ)
-      {multiBonus:2,gunExplode:true,gunPierce:0.3},                      // v3: 30%で弾が貫通
-      {multiBonus:2,gunExplode:true,gunPierce:0.3,gunStorm:true}         // v4: 定期全方向バレットストーム
-    ]
-  },
-  // ヴァンピィ: 吸血量2倍・弾に毒効果・超過HP→ATKボーナス・ゾンビ召喚
-  7:{
-    names:["ヴァンピィ","ヴァンピィv1","ヴァインピィv2","ヴァインピィv3","ヴァインピィv4"],
-    bonuses:[
-      {},
-      {vampHeal:4},                                                      // v1: 吸血量2倍(4HP)
-      {vampHeal:4,vampPoison:true},                                      // v2: 弾に毒付与(継続ダメ)
-      {vampHeal:4,vampPoison:true,vampOverheal:true},                    // v3: 超過回復→ATKボーナス
-      {vampHeal:4,vampPoison:true,vampOverheal:true,vampZombie:true}     // v4: 撃破した敵がゾンビに
-    ]
-  },
-  // サイボーグ: 自己修復・電撃連鎖・HP30%以下で攻撃3倍・瀕死EMPバースト
-  8:{
-    names:["サイボーグ","サイボーグv1","サイボーグv2","サイボーグv3","サイボーグv4"],
-    bonuses:[
-      {},
-      {cyberRegen:true},                                                 // v1: 定期自己修復(HP+20)
-      {cyberRegen:true,cyberChain:true},                                 // v2: 弾が電撃連鎖(周囲ダメ)
-      {cyberRegen:true,cyberChain:true,cyberOverload:true},              // v3: HP30%以下で攻撃3倍(過負荷)
-      {cyberRegen:true,cyberChain:true,cyberOverload:true,cyberEMP:true} // v4: HP10%以下で自動EMPバースト
-    ]
-  },
-  // エスパー: 反撃ダメ2倍+バリア+2・念動吹き飛ばし・被弾25%自動回避・低HP自動テレポート
-  9:{
-    names:["エスパー","エスパーv1","エスパーv2","エスパーv3","エスパーv4"],
-    bonuses:[
-      {},
-      {espReflectPow:2,orbBonus:2},                                      // v1: 反撃波2倍,バリア+2
-      {espReflectPow:2,orbBonus:2,espBlow:true},                         // v2: 定期的に念動で敵吹き飛ばし
-      {espReflectPow:2,orbBonus:2,espBlow:true,espDodge:0.25},           // v3: 25%で被弾自動回避(予知)
-      {espReflectPow:2,orbBonus:2,espBlow:true,espDodge:0.25,espTeleport:true} // v4: HP20%以下自動テレポート
-    ]
-  },
-  // バーサーカ: スタック量2倍・HP消費で強化・周囲怒りオーラ・スタック50で無双モード
-  10:{
-    names:["バーサーカ","バーサーカv1","バーサーカv2","バーサーカv3","バーサーカv4"],
-    bonuses:[
-      {},
-      {berserkMult:2},                                                   // v1: スタック攻撃上昇2倍
-      {berserkMult:2,berserkBlood:true},                                 // v2: 一定HP消費で強化攻撃
-      {berserkMult:2,berserkBlood:true,berserkAura:true},                // v3: 周囲に怒りオーラ(継続ダメ)
-      {berserkMult:2,berserkBlood:true,berserkAura:true,berserkUltimate:true} // v4: スタック50→無双モード
-    ]
-  },
-  // ゴースト: 定期透明化(無敵)・弾に呪縛効果・霊体クローン自動攻撃・ゾンビ憑依攻撃
-  11:{
-    names:["ゴースト","ゴーストv1","ゴーストv2","ゴーストv3","ゴーストv4"],
-    bonuses:[
-      {},
-      {ghostInvis:true},                                                 // v1: 5秒ごとに1秒間透明無敵
-      {ghostInvis:true,ghostCurse:true},                                 // v2: 弾に呪縛(命中敵がスロー)
-      {ghostInvis:true,ghostCurse:true,ghostClone:true},                 // v3: 定期的に霊体コピーが攻撃
-      {ghostInvis:true,ghostCurse:true,ghostClone:true,ghostPossess:true}// v4: 撃破時に敵に憑依し自動攻撃
-    ]
-  },
-  // サムライ: 斬撃範囲1.5倍・居合い突進・流し斬り・HP50%以下で一撃必殺確率
-  12:{
-    names:["サムライ","サムライv1","サムライv2","サムライv3","サムライv4"],
-    bonuses:[
-      {},
-      {slashRange:1.5},                                                  // v1: 斬撃範囲1.5倍
-      {slashRange:1.5,iaiActive:true},                                   // v2: 居合い斬り(突進+高威力)
-      {slashRange:2.0,iaiActive:true,slashFlow:true},                    // v3: 流し斬り(移動方向に連続斬)
-      {slashRange:2.0,iaiActive:true,slashFlow:true,slashFinal:true}     // v4: 必殺剣(低HP時一撃確率UP)
-    ]
-  },
-  // リッチ: 魔法弾発動率40%+威力1.5倍・魔法弾に呪縛・撃破時死の爆発・死霊ミニオン召喚
-  13:{
-    names:["リッチ","リッチv1","リッチv2","リッチv3","リッチv4"],
-    bonuses:[
-      {},
-      {lichMagicRate:0.4,lichMagicPow:1.5},                              // v1: 発動率40%,威力+50%
-      {lichMagicRate:0.4,lichMagicPow:1.5,lichCurseShot:true},           // v2: 魔法弾に呪縛効果
-      {lichMagicRate:0.4,lichMagicPow:1.5,lichCurseShot:true,lichExplosion:true}, // v3: 撃破時死の爆発
-      {lichMagicRate:0.4,lichMagicPow:1.5,lichCurseShot:true,lichExplosion:true,lichSummon:true} // v4: 死霊召喚
-    ]
-  },
-  // ギャンブラ: コイン倍率1.5倍・定期ルーレット(ランダムボーナス)・撃破時コイン大量獲得・ジャックポット
-  14:{
-    names:["ギャンブラ","ギャンブラv1","ギャンブラv2","ギャンブラv3","ギャンブラv4"],
-    bonuses:[
-      {},
-      {gambMult:1.5},                                                    // v1: コイン倍率1.5倍
-      {gambMult:1.5,gambRoulette:true},                                  // v2: 定期ルーレット(ランダムボーナス)
-      {gambMult:1.5,gambRoulette:true,gambAllin:true},                   // v3: 撃破時5%でコイン大量獲得
-      {gambMult:1.5,gambRoulette:true,gambAllin:true,gambJackpot:true}   // v4: 0.2%で全敵撃破ジャックポット
-    ]
-  },
-  // ドクター: 毎秒回復2倍・被弾時即時HP+30・毒/スロー無効+継続ダメ半減・HP0蘇生1回
-  15:{
-    names:["ドクター","ドクターv1","ドクターv2","ドクターv3","ドクターv4"],
-    bonuses:[
-      {},
-      {docRegen:10},                                                     // v1: 毎秒回復2倍(10HP)
-      {docRegen:10,docAura:true},                                        // v2: 被弾時即時HP+30(治癒オーラ)
-      {docRegen:10,docAura:true,docDetox:true},                          // v3: 毒/スロー無効,継続ダメ半減
-      {docRegen:10,docAura:true,docDetox:true,docRevive:true}            // v4: HP0でも25%HPで蘇生1回
-    ]
-  },
-  // アーチャー: 矢威力1.5倍・矢の連射数2倍・矢が着弾爆発・定期的に矢の雨
-  16:{
-    names:["アーチャー","アーチャーv1","アーチャーv2","アーチャーv3","アーチャーv4"],
-    bonuses:[
-      {},
-      {archerPow:1.5},                                                   // v1: 矢威力+50%
-      {archerPow:1.5,archerRapid:true},                                  // v2: 矢の連射数2倍
-      {archerPow:1.5,archerRapid:true,archerExplosive:true},             // v3: 矢が爆発矢(着弾範囲ダメ)
-      {archerPow:1.5,archerRapid:true,archerExplosive:true,archerRain:true} // v4: 定期的に矢の雨
-    ]
-  },
-  // エイリアン: ワープ頻度UP+爆弾威力1.5倍・ワープ後分身残留・爆弾連鎖爆発・宇宙砲
-  17:{
-    names:["エイリアン","エイリアンv1","エイリアンv2","エイリアンv3","エイリアンv4"],
-    bonuses:[
-      {},
-      {alienWarpCD:80,alienBombPow:1.5},                                 // v1: ワープ頻度UP, 爆弾威力+50%
-      {alienWarpCD:80,alienBombPow:1.5,alienClone:true},                 // v2: ワープ後に分身が残り攻撃
-      {alienWarpCD:60,alienBombPow:2.0,alienClone:true,alienBombChain:true}, // v3: 爆弾連鎖爆発
-      {alienWarpCD:60,alienBombPow:2.0,alienClone:true,alienBombChain:true,alienCannon:true} // v4: 宇宙砲
-    ]
-  },
-  // ドラゴン: ブレス威力1.5倍・ブレスに炎上(継続ダメ)・定期的に翼爆(全方向炎弾)・咆哮(全体ダメ+スタン)
-  18:{
-    names:["ドラゴン","ドラゴンv1","ドラゴンv2","ドラゴンv3","ドラゴンv4"],
-    bonuses:[
-      {},
-      {dragonBreathPow:1.5},                                             // v1: ブレス威力+50%
-      {dragonBreathPow:1.5,dragonBurn:true},                             // v2: ブレスに炎上(継続ダメ)
-      {dragonBreathPow:2.0,dragonBurn:true,dragonWing:true},             // v3: 翼爆(全方向炎弾散布)
-      {dragonBreathPow:2.0,dragonBurn:true,dragonWing:true,dragonRoar:true} // v4: 咆哮(全体ダメ+スタン)
-    ]
-  }
+  1:{names:["ニンジャ","ニンジャv1","ニンジャv2","ニンジャv3","ニンジャv4"],bonuses:[{},{spd:1.3,ninjaCount:12},{spd:1.3,ninjaCount:12,ninjaGhost:true},{spd:1.5,ninjaCount:16,ninjaGhost:true,ninjaPierce:true},{spd:1.5,ninjaCount:16,ninjaGhost:true,ninjaPierce:true,ninjaStorm:true}]},
+  2:{names:["タンク","タンクv1","タンクv2","タンクv3","タンクv4"],bonuses:[{},{tankBlockRate:0.40},{tankBlockRate:0.40,tankSpike:true},{tankBlockRate:0.40,tankSpike:true,tankBarrier:true},{tankBlockRate:0.40,tankSpike:true,tankBarrier:true,tankRage:true}]},
+  3:{names:["スナイパ","スナイパv1","スナイパv2","スナイパv3","スナイパv4"],bonuses:[{},{sniperPow:1.5,sniperCD:100},{sniperPow:1.5,sniperCD:100,sniperTriple:true},{sniperPow:2.0,sniperCD:80,sniperTriple:true,sniperCharge:true},{sniperPow:2.0,sniperCD:80,sniperTriple:true,sniperCharge:true,sniperBounce:true}]},
+  4:{names:["マグネ","マグネv1","マグネv2","マグネv3","マグネv4"],bonuses:[{},{magPull:true},{magPull:true,magCrash:true},{magPull:true,magCrash:true,magField:true},{magPull:true,magCrash:true,magField:true,magSuck:true}]},
+  5:{names:["パラディン","パラディンv1","パラディンv2","パラディンv3","パラディンv4"],bonuses:[{},{orbBonus:2,paladinFast:true},{orbBonus:2,paladinFast:true,paladinReflect:true},{orbBonus:2,paladinFast:true,paladinReflect:true,paladinHoly:true},{orbBonus:2,paladinFast:true,paladinReflect:true,paladinHoly:true,paladinRevive:true}]},
+  6:{names:["ガンナー","ガンナーv1","ガンナーv2","ガンナーv3","ガンナーv4"],bonuses:[{},{multiBonus:2},{multiBonus:2,gunExplode:true},{multiBonus:2,gunExplode:true,gunPierce:0.3},{multiBonus:2,gunExplode:true,gunPierce:0.3,gunStorm:true}]},
+  7:{names:["ヴァンピィ","ヴァンピィv1","ヴァンピィv2","ヴァンピィv3","ヴァンピィv4"],bonuses:[{},{vampHeal:4},{vampHeal:4,vampPoison:true},{vampHeal:4,vampPoison:true,vampOverheal:true},{vampHeal:4,vampPoison:true,vampOverheal:true,vampZombie:true}]},
+  8:{names:["サイボーグ","サイボーグv1","サイボーグv2","サイボーグv3","サイボーグv4"],bonuses:[{},{cyberRegen:true},{cyberRegen:true,cyberChain:true},{cyberRegen:true,cyberChain:true,cyberOverload:true},{cyberRegen:true,cyberChain:true,cyberOverload:true,cyberEMP:true}]},
+  9:{names:["エスパー","エスパーv1","エスパーv2","エスパーv3","エスパーv4"],bonuses:[{},{espReflectPow:2,orbBonus:2},{espReflectPow:2,orbBonus:2,espBlow:true},{espReflectPow:2,orbBonus:2,espBlow:true,espDodge:0.25},{espReflectPow:2,orbBonus:2,espBlow:true,espDodge:0.25,espTeleport:true}]},
+  10:{names:["バーサーカ","バーサーカv1","バーサーカv2","バーサーカv3","バーサーカv4"],bonuses:[{},{berserkMult:2},{berserkMult:2,berserkBlood:true},{berserkMult:2,berserkBlood:true,berserkAura:true},{berserkMult:2,berserkBlood:true,berserkAura:true,berserkUltimate:true}]},
+  11:{names:["ゴースト","ゴーストv1","ゴーストv2","ゴーストv3","ゴーストv4"],bonuses:[{},{ghostInvis:true},{ghostInvis:true,ghostCurse:true},{ghostInvis:true,ghostCurse:true,ghostClone:true},{ghostInvis:true,ghostCurse:true,ghostClone:true,ghostPossess:true}]},
+  12:{names:["サムライ","サムライv1","サムライv2","サムライv3","サムライv4"],bonuses:[{},{slashRange:1.5},{slashRange:1.5,iaiActive:true},{slashRange:2.0,iaiActive:true,slashFlow:true},{slashRange:2.0,iaiActive:true,slashFlow:true,slashFinal:true}]},
+  13:{names:["リッチ","リッチv1","リッチv2","リッチv3","リッチv4"],bonuses:[{},{lichMagicRate:0.4,lichMagicPow:1.5},{lichMagicRate:0.4,lichMagicPow:1.5,lichCurseShot:true},{lichMagicRate:0.4,lichMagicPow:1.5,lichCurseShot:true,lichExplosion:true},{lichMagicRate:0.4,lichMagicPow:1.5,lichCurseShot:true,lichExplosion:true,lichSummon:true}]},
+  14:{names:["ギャンブラ","ギャンブラv1","ギャンブラv2","ギャンブラv3","ギャンブラv4"],bonuses:[{},{gambMult:1.5},{gambMult:1.5,gambRoulette:true},{gambMult:1.5,gambRoulette:true,gambAllin:true},{gambMult:1.5,gambRoulette:true,gambAllin:true,gambJackpot:true}]},
+  15:{names:["ドクター","ドクターv1","ドクターv2","ドクターv3","ドクターv4"],bonuses:[{},{docRegen:10},{docRegen:10,docAura:true},{docRegen:10,docAura:true,docDetox:true},{docRegen:10,docAura:true,docDetox:true,docRevive:true}]},
+  16:{names:["アーチャー","アーチャーv1","アーチャーv2","アーチャーv3","アーチャーv4"],bonuses:[{},{archerPow:1.5},{archerPow:1.5,archerRapid:true},{archerPow:1.5,archerRapid:true,archerExplosive:true},{archerPow:1.5,archerRapid:true,archerExplosive:true,archerRain:true}]},
+  17:{names:["エイリアン","エイリアンv1","エイリアンv2","エイリアンv3","エイリアンv4"],bonuses:[{},{alienWarpCD:80,alienBombPow:1.5},{alienWarpCD:80,alienBombPow:1.5,alienClone:true},{alienWarpCD:60,alienBombPow:2.0,alienClone:true,alienBombChain:true},{alienWarpCD:60,alienBombPow:2.0,alienClone:true,alienBombChain:true,alienCannon:true}]},
+  18:{names:["ドラゴン","ドラゴンv1","ドラゴンv2","ドラゴンv3","ドラゴンv4"],bonuses:[{},{dragonBreathPow:1.5},{dragonBreathPow:1.5,dragonBurn:true},{dragonBreathPow:2.0,dragonBurn:true,dragonWing:true},{dragonBreathPow:2.0,dragonBurn:true,dragonWing:true,dragonRoar:true}]}
 };
 
 const ROOKIE_NAMES=["ルーキー","ヒューマン","ヒューマン v1","ヒューマン v2","ヒューマン v3","ゴットヒューマン v4"];
@@ -329,15 +150,18 @@ function loadData(){
   if(!saveData.awakenedChars)saveData.awakenedChars=[];
   if(saveData.rookieAwakeStage===undefined)saveData.rookieAwakeStage=0;
   if(!saveData.charAwakeStage)saveData.charAwakeStage={};
+  if(saveData.fragments===undefined)saveData.fragments=0;
   if(saveData.name){document.getElementById('screen-login').classList.add('hidden');openHome();}
 }
 function saveGame(){localStorage.setItem('jsSurvivorUltraSave',JSON.stringify(saveData));}
 
+// ===== ゲーム状態変数 =====
 let state='LOGIN',playTime=300,scoreCoins=0,frameCount=0;
 let isBossActive=false,currentStage=1;
 let player,enemies,bullets,gems,orbits,damageTexts,hazards,zombies;
 let targetPos={x:0,y:0};
 let isRaidMode=false,raidTargetCharId=0,raidTargetRookieStage=0,raidTargetCharStage=0;
+let isCrusherRaid=false; // ★クラッシャーレイドフラグ
 let libTimer=0,libCool=0;
 let tankRageStacks=0,tankBarrierActive=false,tankBarrierCD=0;
 let vampOverhealBonus=0;
@@ -351,6 +175,13 @@ let lichMinionList=[];
 let alienCloneList=[];
 let ghostCloneList=[];
 let dragonRoarCD=0;
+// ★クラッシャー専用エフェクト変数
+let crusherEarthquake=0; // 地震中フレーム数
+let crusherTsunami=0;    // 津波中フレーム数
+let crusherTsunamiHit=false; // 津波ダメージ済み
+let playerFrozen=0;      // プレイヤー動作不能フレーム(地震・気圧弾)
+let playerAttackFrozen=0;// 攻撃不可フレーム(地震)
+let crusherPressureBalls=[]; // 気圧弾リスト {x,y,r,life,hitPlayer,bossRef}
 
 const skillPool=[
   {id:'multi',name:'連射',desc:'弾数+1'},
@@ -361,25 +192,10 @@ const skillPool=[
   {id:'heal',name:'回復',desc:'HPを50%回復'}
 ];
 
-function getCharAwakeStage(id){
-  if(id===0)return saveData.rookieAwakeStage;
-  return saveData.charAwakeStage[id]||0;
-}
-function getCharAwakeName(id){
-  if(id===0)return ROOKIE_NAMES[saveData.rookieAwakeStage];
-  let st=getCharAwakeStage(id);
-  if(st===0)return CHAR_DATA[id].name;
-  if(!CHAR_AWAKE[id])return CHAR_DATA[id].name;
-  return CHAR_AWAKE[id].names[st];
-}
-function getCharDisplayName(id){
-  return getCharAwakeName(id);
-}
-function getAwakeBonus(id){
-  let st=getCharAwakeStage(id);
-  if(st===0||!CHAR_AWAKE[id])return {};
-  return CHAR_AWAKE[id].bonuses[st]||{};
-}
+function getCharAwakeStage(id){if(id===0)return saveData.rookieAwakeStage;return saveData.charAwakeStage[id]||0;}
+function getCharAwakeName(id){if(id===0)return ROOKIE_NAMES[saveData.rookieAwakeStage];let st=getCharAwakeStage(id);if(st===0)return CHAR_DATA[id].name;if(!CHAR_AWAKE[id])return CHAR_DATA[id].name;return CHAR_AWAKE[id].names[st];}
+function getCharDisplayName(id){return getCharAwakeName(id);}
+function getAwakeBonus(id){let st=getCharAwakeStage(id);if(st===0||!CHAR_AWAKE[id])return {};return CHAR_AWAKE[id].bonuses[st]||{};}
 
 document.getElementById('btn-login').onclick=()=>{
   let n=document.getElementById('player-name-input').value.trim();
@@ -392,6 +208,7 @@ function openHome(){
   state='HOME';
   document.getElementById('disp-name').innerText=saveData.name;
   document.getElementById('disp-coins').innerText=saveData.coins;
+  document.getElementById('disp-frags').innerText=saveData.fragments||0;
   const sel=document.getElementById('stage-select');
   sel.innerHTML="";
   for(let i=1;i<=30;i++){
@@ -407,8 +224,7 @@ function openHome(){
 
 document.getElementById('btn-char-menu').onclick=()=>{
   document.getElementById('screen-home').classList.add('hidden');
-  const list=document.getElementById('char-list');
-  list.innerHTML="";
+  const list=document.getElementById('char-list');list.innerHTML="";
   CHAR_DATA.forEach(c=>{
     let isOwned=saveData.chars.includes(c.id);
     let div=document.createElement('div');
@@ -423,37 +239,20 @@ document.getElementById('btn-close-chars').onclick=openHome;
 
 document.getElementById('btn-raid-menu').onclick=()=>{
   document.getElementById('screen-home').classList.add('hidden');
-  const list=document.getElementById('raid-char-list');
-  list.innerHTML="";
+  const list=document.getElementById('raid-char-list');list.innerHTML="";
   CHAR_DATA.forEach(c=>{
     if(!saveData.chars.includes(c.id))return;
     let div=document.createElement('div');
     if(c.id===0){
       let next=saveData.rookieAwakeStage+1;
-      if(next>5){
-        div.className='char-box owned';
-        div.innerHTML=`<strong>ヒューマン</strong><br><span style="color:#f0f;">完全覚醒済み</span>`;
-      } else {
-        div.className='char-box';
-        div.innerHTML=`<strong>${ROOKIE_NAMES[next]} 昇格戦</strong><br>未クリア`;
-        div.onclick=()=>{if(confirm(`${ROOKIE_NAMES[next]}への覚醒ボスに挑みますか？`))startRaid(0,next,0);};
-      }
+      if(next>5){div.className='char-box owned';div.innerHTML=`<strong>ヒューマン</strong><br><span style="color:#f0f;">完全覚醒済み</span>`;}
+      else{div.className='char-box';div.innerHTML=`<strong>${ROOKIE_NAMES[next]} 昇格戦</strong><br>未クリア`;div.onclick=()=>{if(confirm(`${ROOKIE_NAMES[next]}への覚醒ボスに挑みますか？`))startRaid(0,next,0);};}
     } else if(c.id===19){
-      div.className='char-box owned';
-      div.innerHTML=`<strong>カミサマ</strong><br><span style="font-size:12px;">覚醒対象外</span>`;
+      div.className='char-box owned';div.innerHTML=`<strong>カミサマ</strong><br><span style="font-size:12px;">覚醒対象外</span>`;
     } else {
       let st=getCharAwakeStage(c.id);
-      let maxSt=4;
-      if(st>=maxSt){
-        div.className='char-box owned';
-        div.innerHTML=`<strong>${getCharDisplayName(c.id)}</strong><br><span style="color:#f0f;">★完全覚醒済み</span>`;
-      } else {
-        let nextSt=st+1;
-        let nextName=CHAR_AWAKE[c.id]?CHAR_AWAKE[c.id].names[nextSt]:c.name+` v${nextSt}`;
-        div.className='char-box';
-        div.innerHTML=`<strong>${nextName} 昇格戦</strong><br><span style="font-size:12px;">${st>0?'現在: v'+st:'未覚醒'}</span>`;
-        div.onclick=()=>{if(confirm(`${nextName}への覚醒ボスに挑みますか？`))startRaid(c.id,0,nextSt);};
-      }
+      if(st>=4){div.className='char-box owned';div.innerHTML=`<strong>${getCharDisplayName(c.id)}</strong><br><span style="color:#f0f;">★完全覚醒済み</span>`;}
+      else{let nextSt=st+1;let nextName=CHAR_AWAKE[c.id]?CHAR_AWAKE[c.id].names[nextSt]:c.name+` v${nextSt}`;div.className='char-box';div.innerHTML=`<strong>${nextName} 昇格戦</strong><br><span style="font-size:12px;">${st>0?'現在: v'+st:'未覚醒'}</span>`;div.onclick=()=>{if(confirm(`${nextName}への覚醒ボスに挑みますか？`))startRaid(c.id,0,nextSt);};}
     }
     list.appendChild(div);
   });
@@ -461,32 +260,25 @@ document.getElementById('btn-raid-menu').onclick=()=>{
 };
 document.getElementById('btn-close-raid').onclick=openHome;
 
-document.getElementById('btn-gacha-menu').onclick=()=>{
-  document.getElementById('screen-home').classList.add('hidden');
-  document.getElementById('gacha-result').style.display='none';
-  document.getElementById('screen-gacha').classList.remove('hidden');
-};
+document.getElementById('btn-gacha-menu').onclick=()=>{document.getElementById('screen-home').classList.add('hidden');document.getElementById('gacha-result').style.display='none';document.getElementById('screen-gacha').classList.remove('hidden');};
 document.getElementById('btn-close-gacha').onclick=openHome;
 document.getElementById('btn-pull-gacha').onclick=()=>{
   if(saveData.coins<1000)return alert("コインが足りません!");
   saveData.coins-=1000;
-  let roll=Math.random();
-  let newCharId=(roll<0.01)?19:Math.floor(Math.random()*18)+1;
-  let cInfo=CHAR_DATA[newCharId];
-  let resDiv=document.getElementById('gacha-result');
-  if(saveData.chars.includes(newCharId)){
-    resDiv.innerText=`${cInfo.name} (ダブり... 300C還元)`;resDiv.style.color="gray";saveData.coins+=300;
-  } else {
-    resDiv.innerText=`NEW! ${cInfo.name} ゲット!!`;resDiv.style.color="#00ffcc";saveData.chars.push(newCharId);
-  }
+  let roll=Math.random();let newCharId=(roll<0.01)?19:Math.floor(Math.random()*18)+1;
+  let cInfo=CHAR_DATA[newCharId];let resDiv=document.getElementById('gacha-result');
+  if(saveData.chars.includes(newCharId)){resDiv.innerText=`${cInfo.name} (ダブり... 300C還元)`;resDiv.style.color="gray";saveData.coins+=300;}
+  else{resDiv.innerText=`NEW! ${cInfo.name} ゲット!!`;resDiv.style.color="#00ffcc";saveData.chars.push(newCharId);}
   resDiv.style.display='block';saveGame();document.getElementById('disp-coins').innerText=saveData.coins;
 };
 
-document.getElementById('btn-start').onclick=()=>{isRaidMode=false;initGame();};
+document.getElementById('btn-start').onclick=()=>{isRaidMode=false;isCrusherRaid=false;initGame();};
 function startRaid(targetCharId,targetRStage,targetCStage){
-  isRaidMode=true;raidTargetCharId=targetCharId;
-  raidTargetRookieStage=targetRStage;raidTargetCharStage=targetCStage;
-  initGame();
+  isRaidMode=true;isCrusherRaid=false;raidTargetCharId=targetCharId;
+  raidTargetRookieStage=targetRStage;raidTargetCharStage=targetCStage;initGame();
+}
+function startCrusherRaid(){
+  isRaidMode=false;isCrusherRaid=true;initGame();
 }
 
 function initGame(){
@@ -496,60 +288,72 @@ function initGame(){
   let ab=getAwakeBonus(c.id);
   let isHuman=(c.id===0&&saveData.rookieAwakeStage>=1);
   let spdMult=ab.spd||1;
-
   player={
     x:width/2,y:height/2,size:15,
-    hp:c.hp*(st>0?1.3+st*0.2:1),
-    maxHp:c.hp*(st>0?1.3+st*0.2:1),
+    hp:c.hp*(st>0?1.3+st*0.2:1),maxHp:c.hp*(st>0?1.3+st*0.2:1),
     color:c.color,level:1,exp:0,maxExp:3,cid:c.id,
     dodgeCount:0,defenseMulti:isHuman?0.5:1,berserkStacks:0,
-    stats:{
-      multi:c.multi+(ab.multiBonus||0),
-      power:c.atk*(1+st*0.15)+(saveData.rookieAwakeStage>=4?50:0),
-      speed:c.spd*spdMult,
-      orbit:c.orb+(ab.orbBonus||0),
-      magnet:c.mag+(c.id===4&&ab.magPull?200:0)
-    }
+    stats:{multi:c.multi+(ab.multiBonus||0),power:c.atk*(1+st*0.15)+(saveData.rookieAwakeStage>=4?50:0),speed:c.spd*spdMult,orbit:c.orb+(ab.orbBonus||0),magnet:c.mag+(c.id===4&&ab.magPull?200:0)}
   };
-
   document.getElementById('ui-char-name').innerHTML=getCharDisplayName(c.id);
   document.getElementById('ui-char-name').style.color=c.color;
-
   enemies=[];bullets=[];gems=[];orbits=[];damageTexts=[];hazards=[];zombies=[];
-  lichMinionList=[];alienCloneList=[];ghostCloneList=[];
+  lichMinionList=[];alienCloneList=[];ghostCloneList=[];crusherPressureBalls=[];
   scoreCoins=0;playTime=300;frameCount=0;isBossActive=false;
-  libTimer=0;libCool=0;
-  tankRageStacks=0;tankBarrierActive=false;tankBarrierCD=0;
+  libTimer=0;libCool=0;tankRageStacks=0;tankBarrierActive=false;tankBarrierCD=0;
   vampOverhealBonus=0;cyberEMPUsed=false;espTeleportCD=0;
   berserkUltimateTimer=0;ghostInvisTimer=0;ghostInvisCool=0;
-  docReviveUsed=false;paladinReviveUsed=false;
-  gambRouletteCD=0;dragonRoarCD=0;
-
-  // タンクv3 開始時バリア有効
+  docReviveUsed=false;paladinReviveUsed=false;gambRouletteCD=0;dragonRoarCD=0;
+  crusherEarthquake=0;crusherTsunami=0;crusherTsunamiHit=false;
+  playerFrozen=0;playerAttackFrozen=0;
   if(c.id===2&&ab.tankBarrier)tankBarrierActive=true;
-
   targetPos={x:player.x,y:player.y};
   state='PLAYING';
   document.querySelectorAll('.overlay').forEach(s=>s.classList.add('hidden'));
   document.getElementById('ui-layer').classList.remove('hidden');
   document.getElementById('boss-notice').style.display='none';
+  document.getElementById('res-frags').style.display='none';
+  // ★クラッシャーレイドなら即ボス出現
+  if(isCrusherRaid){
+    spawnCrusherBoss();
+  }
   loop();
 }
 
+// ===== クラッシャーボス出現 =====
+function spawnCrusherBoss(){
+  isBossActive=true;
+  document.getElementById('boss-notice').style.display='block';
+  document.getElementById('boss-notice').style.color='#7df';
+  document.getElementById('boss-notice').innerText='⚠ CRUSHER RAID ⚠';
+  setTimeout(()=>document.getElementById('boss-notice').style.display='none',3000);
+  let hp=200000;
+  enemies.push({
+    x:width/2,y:height*0.18,size:70,hp,maxHp:hp,
+    speed:1.4,isBoss:true,isCrusher:true,
+    color:'#b0e8ff',phase:1, // 第1形態
+    skillCooldown:80,skillPhase2EQ:0,
+    dashTimer:0,dashDuration:0,dashVx:0,dashVy:0,isDashing:false,
+    irregTimer:0,irregAngle:0,irregStrength:0,
+    shockwaveCD:0
+  });
+  // 雑魚を少数だけ出す（初期5体・以降追加なし）
+  for(let i=0;i<5;i++){
+    let x=Math.random()<0.5?(Math.random()<0.5?-30:width+30):Math.random()*width;
+    let y=(x<0||x>width)?Math.random()*height:(Math.random()<0.5?-30:height+30);
+    enemies.push({x,y,size:12,hp:30,maxHp:30,speed:1.5,isBoss:false,isCrusherMinion:true,wanderAngle:0,wanderTimer:0,wanderChange:0});
+  }
+}
+
 function triggerLevelUp(){
-  state='LEVELUP';
-  targetPos.x=player.x;targetPos.y=player.y;
+  state='LEVELUP';targetPos.x=player.x;targetPos.y=player.y;
   player.level++;player.exp-=player.maxExp;player.maxExp=Math.floor(3+player.level*1.5);
   document.getElementById('ui-level').innerText=player.level;
-  const container=document.getElementById('skill-container');
-  container.innerHTML='';
+  const container=document.getElementById('skill-container');container.innerHTML='';
   let pool=[...skillPool];
-  if(player.cid===0&&saveData.rookieAwakeStage>=5&&libTimer<=0&&libCool<=0){
-    pool.push({id:'liberation',name:'能力解放',desc:'1分間超強化！(CT90秒)'});
-  }
+  if(player.cid===0&&saveData.rookieAwakeStage>=5&&libTimer<=0&&libCool<=0)pool.push({id:'liberation',name:'能力解放',desc:'1分間超強化！(CT90秒)'});
   pool.sort(()=>0.5-Math.random()).slice(0,3).forEach(s=>{
-    let div=document.createElement('div');
-    div.className='skill-card';
+    let div=document.createElement('div');div.className='skill-card';
     if(s.id==='liberation')div.style.borderColor="#f00";
     div.innerHTML=`<strong>${s.name}</strong><p>${s.desc}</p>`;
     div.onclick=()=>{
@@ -575,28 +379,122 @@ function spawnEnemy(){
   let timeMult=(300-playTime)/60;
   let hp=20*(1+timeMult*2)*(1+currentStage*0.2);
   let spd=1.5+timeMult*0.5+currentStage*0.05;
-  enemies.push({x,y,size:12,hp,maxHp:hp,speed:spd,isBoss:false,
-    wanderAngle:Math.random()*Math.PI*2,wanderTimer:0,wanderChange:0});
+  enemies.push({x,y,size:12,hp,maxHp:hp,speed:spd,isBoss:false,wanderAngle:Math.random()*Math.PI*2,wanderTimer:0,wanderChange:0});
 }
 
-// ボス不規則移動（プレイヤーに向かいつつランダム成分）
-function updateBossIrregular(e){
-  if(!e.irregTimer)e.irregTimer=0;
-  if(!e.irregAngle)e.irregAngle=0;
-  if(!e.irregStrength)e.irregStrength=0;
-  e.irregTimer--;
-  if(e.irregTimer<=0){
-    e.irregTimer=20+Math.floor(Math.random()*50);
-    e.irregAngle=(Math.random()-0.5)*Math.PI*1.6;
-    e.irregStrength=0.25+Math.random()*0.55;
+// ===== ボス v4 ダッシュ移動 =====
+function updateBossV4Dash(e){
+  if(!e.dashTimer)e.dashTimer=0;
+  if(!e.dashCooldown)e.dashCooldown=0;
+  e.dashCooldown--;
+  if(e.isDashing){
+    e.dashDuration--;
+    e.x+=e.dashVx;e.y+=e.dashVy;
+    if(e.dashDuration<=0)e.isDashing=false;
+  } else {
+    // 通常移動（ゆっくり）
+    let angle=Math.atan2(player.y-e.y,player.x-e.x);
+    e.x+=Math.cos(angle)*e.speed;e.y+=Math.sin(angle)*e.speed;
+    // ランダムダッシュ発動
+    if(e.dashCooldown<=0){
+      e.dashCooldown=60+Math.floor(Math.random()*80);
+      e.isDashing=true;
+      e.dashDuration=12+Math.floor(Math.random()*8);
+      // ランダム方向（プレイヤーに向かう成分+乱れ）
+      let da=(Math.random()-0.5)*Math.PI*1.5;
+      e.dashVx=Math.cos(angle+da)*18;
+      e.dashVy=Math.sin(angle+da)*18;
+    }
   }
+}
+
+function updateBossIrregular(e){
+  // v4ボスはダッシュ型に分岐
+  if(e.isCharBoss&&e.targetCharStage===4){updateBossV4Dash(e);return;}
+  if(e.isRaidBoss&&!e.isCharBoss&&e.rStage===4){updateBossV4Dash(e);return;}
+  if(!e.irregTimer)e.irregTimer=0;if(!e.irregAngle)e.irregAngle=0;if(!e.irregStrength)e.irregStrength=0;
+  e.irregTimer--;
+  if(e.irregTimer<=0){e.irregTimer=20+Math.floor(Math.random()*50);e.irregAngle=(Math.random()-0.5)*Math.PI*1.6;e.irregStrength=0.25+Math.random()*0.55;}
   let angle=Math.atan2(player.y-e.y,player.x-e.x);
   let finalAngle=angle+e.irregAngle*e.irregStrength;
-  e.x+=Math.cos(finalAngle)*e.speed;
-  e.y+=Math.sin(finalAngle)*e.speed;
+  e.x+=Math.cos(finalAngle)*e.speed;e.y+=Math.sin(finalAngle)*e.speed;
 }
 
-// 通常敵不規則移動
+// ===== クラッシャーボス AI =====
+function updateCrusher(e){
+  if(crusherEarthquake>0||e.isDashing){
+    // 地震中 or 気圧弾発射後は止まる
+    if(!e.isDashing)return;
+    e.dashDuration--;
+    if(e.dashDuration<=0){e.isDashing=false;}
+    return;
+  }
+  // 通常移動（ゆっくり）
+  let angle=Math.atan2(player.y-e.y,player.x-e.x);
+  e.x+=Math.cos(angle)*e.speed;e.y+=Math.sin(angle)*e.speed;
+
+  // フェーズ判定
+  let hpRatio=e.hp/e.maxHp;
+  if(hpRatio<=0.33&&e.phase<3)e.phase=3; // 体力1/3以下→第3フェーズ(津波)
+  else if(hpRatio<=0.67&&e.phase<2)e.phase=2; // 2/3削られたら第2フェーズ
+
+  e.skillCooldown--;
+  e.shockwaveCD--;
+
+  if(e.skillCooldown<=0){
+    e.skillCooldown=0;
+    // スキル選択
+    let roll=Math.random();
+    if(e.phase>=2&&roll<0.25){
+      // 地震（第2形態以降）
+      triggerEarthquake();
+      e.skillCooldown=300;
+    } else if(e.phase>=3&&roll<0.4&&crusherTsunami<=0){
+      // 津波（第3形態）
+      crusherTsunami=180;crusherTsunamiHit=false;
+      damageTexts.push({x:width/2,y:height/2-60,text:"津波！",life:80,color:"#7df"});
+      e.skillCooldown=360;
+    } else if(roll<0.6){
+      // 気圧弾
+      e.isDashing=true;e.dashDuration=30; // 気圧弾発射中は停止
+      let sz=Math.min(width,height)*0.38;
+      crusherPressureBalls.push({
+        x:e.x+(Math.random()-0.5)*60,y:e.y+(Math.random()-0.5)*60,
+        vx:(player.x-e.x)*0.03+(Math.random()-0.5)*2,
+        vy:(player.y-e.y)*0.03+(Math.random()-0.5)*2,
+        r:sz/2,life:180,hitPlayer:false,boss:e
+      });
+      e.skillCooldown=70;
+    } else {
+      // 衝撃波
+      if(e.shockwaveCD<=0){
+        e.shockwaveCD=120;
+        e.skillCooldown=80;
+        triggerShockwave(e);
+      } else {
+        e.skillCooldown=40;
+      }
+    }
+  }
+}
+
+function triggerEarthquake(){
+  crusherEarthquake=180; // 3秒
+  playerFrozen=180;
+  playerAttackFrozen=180;
+  damageTexts.push({x:width/2,y:height/2,text:"地震！！",life:100,color:"#ffd700"});
+}
+
+function triggerShockwave(e){
+  // 衝撃波：ボス周辺に白い輪を出す　当たったらHP1/3削り＋ノックバック
+  bullets.push({
+    x:e.x,y:e.y,vx:0,vy:0,life:30,
+    dmg:player.maxHp/3,
+    isEnemy:true,isCrusherShock:true,
+    r:0,maxR:200,bossX:e.x,bossY:e.y,hitPlayer:false
+  });
+}
+
 function updateEnemyIrregular(e){
   let ab=getAwakeBonus(player.cid);
   let pAura=(player.cid===0&&saveData.rookieAwakeStage>=2)?150:0;
@@ -604,118 +502,73 @@ function updateEnemyIrregular(e){
   if(pAura>0&&Math.hypot(player.x-e.x,player.y-e.y)<pAura)eSpd*=0.5;
   if(e.slowed>0)eSpd*=0.6;
   e.wanderChange--;
-  if(e.wanderChange<=0){
-    e.wanderChange=15+Math.floor(Math.random()*25);
-    e.wanderAngle=(Math.random()-0.5)*0.8;
-  }
+  if(e.wanderChange<=0){e.wanderChange=15+Math.floor(Math.random()*25);e.wanderAngle=(Math.random()-0.5)*0.8;}
   let angle=Math.atan2(player.y-e.y,player.x-e.x);
   let finalAngle=angle+e.wanderAngle;
-  e.x+=Math.cos(finalAngle)*eSpd;
-  e.y+=Math.sin(finalAngle)*eSpd;
+  e.x+=Math.cos(finalAngle)*eSpd;e.y+=Math.sin(finalAngle)*eSpd;
 }
 
 function spawnBoss(){
   isBossActive=true;
   document.getElementById('boss-notice').style.display='block';
+  document.getElementById('boss-notice').style.color='red';
   enemies=[];hazards=[];
   if(isRaidMode){
     document.getElementById('boss-notice').innerText="WARNING: AWAKENED BOSS!!";
     setTimeout(()=>document.getElementById('boss-notice').style.display='none',3000);
     if(raidTargetCharId===0){
-      // ルーキー覚醒ボス: v4ボスは足が遅い
       let rStage=raidTargetRookieStage;
       let spdMult=(rStage>=4)?0.28:0.7;
       let hp=150000*(1+rStage*0.3);
       let c=CHAR_DATA[0];
-      enemies.push({
-        x:width/2,y:-120,size:80,hp,maxHp:hp,speed:c.spd*spdMult,
-        isBoss:true,isRaidBoss:true,color:c.color,name:c.name,atk:c.atk,multi:c.multi,
-        rStage,rDodge:0,rLib:0,irregTimer:0,irregAngle:0,irregStrength:0
-      });
+      enemies.push({x:width/2,y:-120,size:80,hp,maxHp:hp,speed:c.spd*spdMult,isBoss:true,isRaidBoss:true,color:c.color,name:c.name,atk:c.atk,multi:c.multi,rStage,rDodge:0,rLib:0,irregTimer:0,irregAngle:0,irregStrength:0,dashCooldown:0,isDashing:false,dashDuration:0,dashVx:0,dashVy:0});
     } else {
-      // 他キャラ覚醒ボス
       let targetSt=raidTargetCharStage;
       let c=CHAR_DATA[raidTargetCharId];
       let hp=60000*(1+targetSt*0.5)*(1+currentStage*0.1);
-      enemies.push({
-        x:width/2,y:-120,size:75,hp,maxHp:hp,speed:c.spd*0.6,
-        isBoss:true,isRaidBoss:true,isCharBoss:true,
-        color:c.color,name:c.name,atk:c.atk*(1+targetSt*0.3),multi:c.multi,
-        targetCharId:raidTargetCharId,targetCharStage:targetSt,
-        rDodge:0,irregTimer:0,irregAngle:0,irregStrength:0
-      });
+      enemies.push({x:width/2,y:-120,size:75,hp,maxHp:hp,speed:c.spd*0.6,isBoss:true,isRaidBoss:true,isCharBoss:true,color:c.color,name:c.name,atk:c.atk*(1+targetSt*0.3),multi:c.multi,targetCharId:raidTargetCharId,targetCharStage:targetSt,rDodge:0,irregTimer:0,irregAngle:0,irregStrength:0,dashCooldown:0,isDashing:false,dashDuration:0,dashVx:0,dashVy:0});
     }
   } else {
+    // ★ステージ15以降：1%でクラッシャーレイドトリガー
+    if(currentStage===15&&Math.random()<0.01&&!isCrusherRaid){
+      enemies=[];hazards=[];isBossActive=false;
+      isCrusherRaid=true;spawnCrusherBoss();return;
+    }
     document.getElementById('boss-notice').innerText="STAGE BOSS!!";
     setTimeout(()=>document.getElementById('boss-notice').style.display='none',3000);
     let hp=15000*(1+currentStage*0.8);
-    enemies.push({
-      x:width/2,y:-120,size:100,hp,maxHp:hp,speed:1.0+currentStage*0.03,
-      isBoss:true,stageIdx:currentStage,irregTimer:0,irregAngle:0,irregStrength:0
-    });
+    enemies.push({x:width/2,y:-120,size:100,hp,maxHp:hp,speed:1.0+currentStage*0.03,isBoss:true,stageIdx:currentStage,irregTimer:0,irregAngle:0,irregStrength:0});
   }
 }
 
-function takeDamage(baseDmg,isHazard=false){
+function takeDamage(baseDmg,isHazard=false,isSpecial=false){
   if(player.cid===11&&isHazard)return;
   let ab=getAwakeBonus(player.cid);
-  // ゴーストv1透明中は無敵
   if(player.cid===11&&ab.ghostInvis&&ghostInvisTimer>0)return;
-  // エスパーv3 予知回避
-  if(player.cid===9&&ab.espDodge&&Math.random()<ab.espDodge){
-    damageTexts.push({x:player.x,y:player.y-20,text:"EVADE",life:30,color:"#0ff"});return;
-  }
-  // タンク防御
+  if(!isSpecial&&player.cid===9&&ab.espDodge&&Math.random()<ab.espDodge){damageTexts.push({x:player.x,y:player.y-20,text:"EVADE",life:30,color:"#0ff"});return;}
   let blockRate=(player.cid===2)?(ab.tankBlockRate||0.25):0;
-  if(player.cid===2&&Math.random()<blockRate){
+  if(!isSpecial&&player.cid===2&&Math.random()<blockRate){
     damageTexts.push({x:player.x,y:player.y-20,text:"BLOCK",life:30,color:"#8b4513"});
     let reflDmg=player.stats.power*(ab.tankSpike?2:1);
     enemies.forEach(e=>{if(Math.hypot(player.x-e.x,player.y-e.y)<150)e.hp-=reflDmg;});
     if(ab.tankRage){tankRageStacks+=3;if(tankRageStacks>=30){tankRageStacks=0;enemies.forEach(e=>e.hp-=player.stats.power*10);damageTexts.push({x:player.x,y:player.y-40,text:"RAGE!",life:40,color:"#f00"});}}
     return;
   }
-  // タンクv3 無敵バリア
-  if(player.cid===2&&ab.tankBarrier&&tankBarrierActive){
-    tankBarrierActive=false;tankBarrierCD=1200;
-    damageTexts.push({x:player.x,y:player.y-20,text:"BARRIER!",life:40,color:"#ffd700"});return;
-  }
-  // ルーキーv3 3発に1回MISS
-  if(player.cid===0&&saveData.rookieAwakeStage>=3){
-    player.dodgeCount=(player.dodgeCount+1)%3;
-    if(player.dodgeCount===0){damageTexts.push({x:player.x,y:player.y-20,text:"MISS",life:30,color:"#fff"});return;}
-  }
-  // エスパー被弾時念動反撃
+  if(!isSpecial&&player.cid===2&&ab.tankBarrier&&tankBarrierActive){tankBarrierActive=false;tankBarrierCD=1200;damageTexts.push({x:player.x,y:player.y-20,text:"BARRIER!",life:40,color:"#ffd700"});return;}
+  if(!isSpecial&&player.cid===0&&saveData.rookieAwakeStage>=3){player.dodgeCount=(player.dodgeCount+1)%3;if(player.dodgeCount===0){damageTexts.push({x:player.x,y:player.y-20,text:"MISS",life:30,color:"#fff"});return;}}
   if(player.cid===9){
     let espPow=player.stats.power*(ab.espReflectPow||1);
-    for(let i=0;i<4;i++){
-      bullets.push({x:player.x,y:player.y,vx:Math.cos(i*Math.PI/2)*8,vy:Math.sin(i*Math.PI/2)*8,life:40,dmg:espPow,isEnemy:false,color:"#0ff"});
-    }
+    for(let i=0;i<4;i++){bullets.push({x:player.x,y:player.y,vx:Math.cos(i*Math.PI/2)*8,vy:Math.sin(i*Math.PI/2)*8,life:40,dmg:espPow,isEnemy:false,color:"#0ff"});}
   }
-  // ドクターv2 治癒オーラ
   if(player.cid===15&&ab.docAura)player.hp=Math.min(player.maxHp,player.hp+30);
-  // ドクターv3 ハザード半減
   if(player.cid===15&&ab.docDetox&&isHazard)baseDmg*=0.5;
-
   let dmg=baseDmg*player.defenseMulti;
   if(libTimer>0)dmg*=0.1;
-  // タンクv4 怒りゲージ蓄積
   if(player.cid===2&&ab.tankRage){tankRageStacks+=1;if(tankRageStacks>=30){tankRageStacks=0;enemies.forEach(e=>e.hp-=player.stats.power*10);damageTexts.push({x:player.x,y:player.y-40,text:"RAGE BURST!",life:40,color:"#f00"});}}
   player.hp-=dmg;
-  // パラディンv4 即死防止
-  if(player.hp<=0&&player.cid===5&&ab.paladinRevive&&!paladinReviveUsed){
-    paladinReviveUsed=true;player.hp=1;
-    damageTexts.push({x:player.x,y:player.y-30,text:"DIVINE PROTECT!",life:60,color:"#ffd700"});return;
-  }
-  // ドクターv4 蘇生
-  if(player.hp<=0&&player.cid===15&&ab.docRevive&&!docReviveUsed){
-    docReviveUsed=true;player.hp=player.maxHp*0.25;
-    damageTexts.push({x:player.x,y:player.y-30,text:"REVIVE!",life:60,color:"#fff"});return;
-  }
-  // エスパーv4 低HP自動テレポート
-  if(player.hp<=player.maxHp*0.2&&player.cid===9&&ab.espTeleport&&espTeleportCD<=0){
-    espTeleportCD=180;player.x=Math.random()*width;player.y=Math.random()*height;
-    damageTexts.push({x:player.x,y:player.y-20,text:"TELEPORT!",life:40,color:"#0ff"});return;
-  }
+  if(player.hp<=0&&player.cid===5&&ab.paladinRevive&&!paladinReviveUsed){paladinReviveUsed=true;player.hp=1;damageTexts.push({x:player.x,y:player.y-30,text:"DIVINE PROTECT!",life:60,color:"#ffd700"});return;}
+  if(player.hp<=0&&player.cid===15&&ab.docRevive&&!docReviveUsed){docReviveUsed=true;player.hp=player.maxHp*0.25;damageTexts.push({x:player.x,y:player.y-30,text:"REVIVE!",life:60,color:"#fff"});return;}
+  if(player.hp<=player.maxHp*0.2&&player.cid===9&&ab.espTeleport&&espTeleportCD<=0){espTeleportCD=180;player.x=Math.random()*width;player.y=Math.random()*height;damageTexts.push({x:player.x,y:player.y-20,text:"TELEPORT!",life:40,color:"#0ff"});return;}
   if(player.hp<=0)end(false);
 }
 
@@ -730,6 +583,35 @@ function update(){
   if(dragonRoarCD>0)dragonRoarCD--;
   if(berserkUltimateTimer>0)berserkUltimateTimer--;
   if(gambRouletteCD>0)gambRouletteCD--;
+  if(crusherEarthquake>0)crusherEarthquake--;
+  if(crusherTsunami>0){
+    crusherTsunami--;
+    // 津波ダメージ（1回のみ）
+    if(!crusherTsunamiHit&&crusherTsunami<160){
+      crusherTsunamiHit=true;
+      takeDamage(player.maxHp/3,false,true);
+      damageTexts.push({x:player.x,y:player.y-30,text:"津波ダメージ!",life:60,color:"#7df"});
+    }
+  }
+  if(playerFrozen>0)playerFrozen--;
+  if(playerAttackFrozen>0)playerAttackFrozen--;
+
+  // 気圧弾更新
+  for(let i=crusherPressureBalls.length-1;i>=0;i--){
+    let pb=crusherPressureBalls[i];
+    pb.x+=pb.vx;pb.y+=pb.vy;pb.life--;
+    // プレイヤーが中に入ってたら動けない＋継続ダメ
+    let dx0=player.x-pb.x,dy0=player.y-pb.y;
+    if(Math.hypot(dx0,dy0)<pb.r){
+      playerFrozen=2; // 中にいる間は常に更新
+      if(!pb.hitPlayer){
+        pb.hitPlayer=true;
+        takeDamage(player.maxHp/2,false,true);
+        damageTexts.push({x:player.x,y:player.y-30,text:"気圧弾！",life:60,color:"#b0e8ff"});
+      }
+    }
+    if(pb.life<=0)crusherPressureBalls.splice(i,1);
+  }
 
   let p=player.stats.power;
   if(player.cid===8)p*=(2-player.hp/player.maxHp);
@@ -740,215 +622,73 @@ function update(){
   if(berserkUltimateTimer>0)p*=3;
 
   if(libTimer>0){
-    libTimer--;
-    document.getElementById('liberation-ui').innerText=`能力解放中: ${Math.ceil(libTimer/60)}s`;
-    if(frameCount%300===0){
-      enemies.forEach(e=>{
-        if(Math.hypot(player.x-e.x,player.y-e.y)<300){
-          e.hp-=e.maxHp/3;
-          damageTexts.push({x:e.x,y:e.y,text:Math.floor(e.maxHp/3),life:30,color:"#f00"});
-        }
-      });
-    }
+    libTimer--;document.getElementById('liberation-ui').innerText=`能力解放中: ${Math.ceil(libTimer/60)}s`;
+    if(frameCount%300===0){enemies.forEach(e=>{if(Math.hypot(player.x-e.x,player.y-e.y)<300){e.hp-=e.maxHp/3;damageTexts.push({x:e.x,y:e.y,text:Math.floor(e.maxHp/3),life:30,color:"#f00"});}});}
     if(libTimer<=0)libCool=5400;
-  } else if(libCool>0){
-    libCool--;
-    document.getElementById('liberation-ui').innerText="";
-  }
+  } else if(libCool>0){libCool--;document.getElementById('liberation-ui').innerText="";}
 
   if(frameCount%60===0){
+    // ★ステージ15以降、ボス出現前に1%でクラッシャーレイド発動
+    if(!isBossActive&&!isCrusherRaid&&!isRaidMode&&currentStage>=15&&playTime>180&&Math.random()<0.01){
+      isCrusherRaid=true;spawnCrusherBoss();
+    }
     playTime--;scoreCoins+=(player.cid===14?4:2);
-    // ドクター回復
     if(player.cid===15)player.hp=Math.min(player.maxHp,player.hp+(ab.docRegen||5));
-    // ヒューマン自動回復（弱体化: /8）
     if(player.cid===0&&saveData.rookieAwakeStage>=1)player.hp=Math.min(player.maxHp,player.hp+player.maxHp/8);
-    // パラディンバリア増加
-    if(player.cid===5&&player.stats.orbit<10){
-      if(ab.paladinFast&&frameCount%180===0)player.stats.orbit++;
-      else if(!ab.paladinFast&&frameCount%300===0)player.stats.orbit++;
-    }
-    // マグネ回収範囲増加
+    if(player.cid===5&&player.stats.orbit<10){if(ab.paladinFast&&frameCount%180===0)player.stats.orbit++;else if(!ab.paladinFast&&frameCount%300===0)player.stats.orbit++;}
     if(player.cid===4)player.stats.magnet+=1;
-    // サイボーグv1 自己修復
     if(player.cid===8&&ab.cyberRegen&&frameCount%180===0)player.hp=Math.min(player.maxHp,player.hp+20);
-    // バーサーカv3 怒りオーラ
-    if(player.cid===10&&ab.berserkAura&&frameCount%30===0){
-      enemies.forEach(e=>{if(Math.hypot(player.x-e.x,player.y-e.y)<100)e.hp-=p*0.3;});
-    }
-    // バーサーカv4 無双モード
-    if(player.cid===10&&ab.berserkUltimate&&player.berserkStacks>=50&&berserkUltimateTimer<=0){
-      berserkUltimateTimer=300;player.berserkStacks=0;
-      damageTexts.push({x:player.x,y:player.y-40,text:"無双モード!",life:60,color:"#f00"});
-    }
-    // ゴーストv1 透明化
-    if(player.cid===11&&ab.ghostInvis&&ghostInvisCool<=0){
-      ghostInvisTimer=60;ghostInvisCool=300;
-    }
-    // パラディンv3 聖域
-    if(player.cid===5&&ab.paladinHoly&&frameCount%180===0){
-      enemies.forEach(e=>{
-        let d=Math.hypot(player.x-e.x,player.y-e.y);
-        if(d<200){let a=Math.atan2(e.y-player.y,e.x-player.x);e.x+=Math.cos(a)*80;e.y+=Math.sin(a)*80;}
-      });
-      damageTexts.push({x:player.x,y:player.y-30,text:"HOLY!",life:30,color:"#ffd700"});
-    }
-    // マグネv4 全吸引
-    if(player.cid===4&&ab.magSuck&&frameCount%600===0){
-      enemies.forEach(e=>{e.x+=(player.x-e.x)*0.3;e.y+=(player.y-e.y)*0.3;});
-      damageTexts.push({x:player.x,y:player.y-30,text:"MAGNET PULL!",life:40,color:"#f0f"});
-    }
-    // マグネv3 磁力フィールドダメ
-    if(player.cid===4&&ab.magField){
-      enemies.forEach(e=>{if(Math.hypot(player.x-e.x,player.y-e.y)<player.stats.magnet*0.5)e.hp-=p*0.1;});
-    }
-    // ドラゴンv3 翼爆
-    if(player.cid===18&&ab.dragonWing&&frameCount%360===0){
-      for(let i=0;i<12;i++){
-        let a=(Math.PI*2/12)*i;
-        let bPow=ab.dragonBreathPow||1;
-        bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*8,vy:Math.sin(a)*8,life:50,dmg:p*bPow*0.5,isEnemy:false,color:"#f40",size:12,isBurn:ab.dragonBurn||false});
-      }
-      damageTexts.push({x:player.x,y:player.y-40,text:"翼爆!",life:40,color:"#f40"});
-    }
-    // ドラゴンv4 咆哮
-    if(player.cid===18&&ab.dragonRoar&&dragonRoarCD<=0&&frameCount%480===0){
-      dragonRoarCD=480;
-      enemies.forEach(e=>{e.hp-=p*2;e.stunned=120;});
-      damageTexts.push({x:player.x,y:player.y-50,text:"ROAR!!",life:60,color:"#f00"});
-    }
-    // リッチv4 死霊ミニオン召喚
-    if(player.cid===13&&ab.lichSummon&&frameCount%600===0&&lichMinionList.length<3){
-      lichMinionList.push({x:player.x+Math.random()*100-50,y:player.y+Math.random()*100-50,life:1800});
-    }
-    // ガンナーv4 バレットストーム
-    if(player.cid===6&&ab.gunStorm&&frameCount%480===0){
-      for(let i=0;i<16;i++){
-        let a=(Math.PI*2/16)*i;
-        bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*14,vy:Math.sin(a)*14,life:40,dmg:p,isEnemy:false,color:"#f60"});
-      }
-      damageTexts.push({x:player.x,y:player.y-30,text:"BULLETSTORM!",life:40,color:"#f60"});
-    }
-    // エイリアンv4 宇宙砲
-    if(player.cid===17&&ab.alienCannon&&frameCount%600===0&&enemies.length>0){
-      let tgt=enemies[0];
-      let a=Math.atan2(tgt.y-player.y,tgt.x-player.x);
-      bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*30,vy:Math.sin(a)*30,life:60,dmg:p*15,isEnemy:false,isPiercing:true,color:"#7fff00",size:20});
-      damageTexts.push({x:player.x,y:player.y-30,text:"宇宙砲!",life:50,color:"#7fff00"});
-    }
-    // アーチャーv4 矢の雨
-    if(player.cid===16&&ab.archerRain&&frameCount%480===0){
-      for(let i=0;i<10;i++){
-        let aPow=ab.archerPow||1;
-        bullets.push({x:Math.random()*width,y:-10,vx:0,vy:15,life:50,dmg:p*aPow,isEnemy:false,color:"#228b22",size:6,explodeOnHit:(ab.archerExplosive||false)});
-      }
-      damageTexts.push({x:player.x,y:player.y-30,text:"矢の雨!",life:40,color:"#228b22"});
-    }
-    // ギャンブラv2 ルーレット
-    if(player.cid===14&&ab.gambRoulette&&gambRouletteCD<=0&&frameCount%480===0){
-      gambRouletteCD=480;
-      let roll=Math.random();
-      if(roll<0.33){player.stats.power+=20;damageTexts.push({x:player.x,y:player.y-30,text:"ATK UP!",life:40,color:"#ff1493"});}
-      else if(roll<0.66){player.hp=Math.min(player.maxHp,player.hp+player.maxHp*0.3);damageTexts.push({x:player.x,y:player.y-30,text:"HP回復!",life:40,color:"#ff1493"});}
-      else{player.stats.speed+=0.5;damageTexts.push({x:player.x,y:player.y-30,text:"SPEED UP!",life:40,color:"#ff1493"});}
-    }
-    // サムライv3 流し斬り
-    if(player.cid===12&&ab.slashFlow&&frameCount%120===0){
-      let dx2=targetPos.x-player.x,dy2=targetPos.y-player.y;
-      let a=Math.atan2(dy2,dx2);
-      for(let i=0;i<3;i++){
-        bullets.push({x:player.x+Math.cos(a)*i*30,y:player.y+Math.sin(a)*i*30,vx:0,vy:0,life:8,dmg:p*(ab.slashRange||1)*2,isEnemy:false,size:80*(ab.slashRange||1),isMelee:true});
-      }
-    }
-    // カミサマ 神の雷
-    if(player.cid===19&&frameCount%600===0){
-      enemies.forEach(e=>{e.hp-=p*5;damageTexts.push({x:e.x,y:e.y,text:Math.floor(p*5),life:40,color:"#ffea00"});});
-    }
-    if(playTime<=180&&!isBossActive)spawnBoss();
+    if(player.cid===10&&ab.berserkAura&&frameCount%30===0){enemies.forEach(e=>{if(Math.hypot(player.x-e.x,player.y-e.y)<100)e.hp-=p*0.3;});}
+    if(player.cid===10&&ab.berserkUltimate&&player.berserkStacks>=50&&berserkUltimateTimer<=0){berserkUltimateTimer=300;player.berserkStacks=0;damageTexts.push({x:player.x,y:player.y-40,text:"無双モード!",life:60,color:"#f00"});}
+    if(player.cid===11&&ab.ghostInvis&&ghostInvisCool<=0){ghostInvisTimer=60;ghostInvisCool=300;}
+    if(player.cid===5&&ab.paladinHoly&&frameCount%180===0){enemies.forEach(e=>{let d=Math.hypot(player.x-e.x,player.y-e.y);if(d<200){let a=Math.atan2(e.y-player.y,e.x-player.x);e.x+=Math.cos(a)*80;e.y+=Math.sin(a)*80;}});damageTexts.push({x:player.x,y:player.y-30,text:"HOLY!",life:30,color:"#ffd700"});}
+    if(player.cid===4&&ab.magSuck&&frameCount%600===0){enemies.forEach(e=>{e.x+=(player.x-e.x)*0.3;e.y+=(player.y-e.y)*0.3;});damageTexts.push({x:player.x,y:player.y-30,text:"MAGNET PULL!",life:40,color:"#f0f"});}
+    if(player.cid===4&&ab.magField){enemies.forEach(e=>{if(Math.hypot(player.x-e.x,player.y-e.y)<player.stats.magnet*0.5)e.hp-=p*0.1;});}
+    if(player.cid===18&&ab.dragonWing&&frameCount%360===0){for(let i=0;i<12;i++){let a=(Math.PI*2/12)*i;let bPow=ab.dragonBreathPow||1;bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*8,vy:Math.sin(a)*8,life:50,dmg:p*bPow*0.5,isEnemy:false,color:"#f40",size:12,isBurn:ab.dragonBurn||false});}damageTexts.push({x:player.x,y:player.y-40,text:"翼爆!",life:40,color:"#f40"});}
+    if(player.cid===18&&ab.dragonRoar&&dragonRoarCD<=0&&frameCount%480===0){dragonRoarCD=480;enemies.forEach(e=>{e.hp-=p*2;e.stunned=120;});damageTexts.push({x:player.x,y:player.y-50,text:"ROAR!!",life:60,color:"#f00"});}
+    if(player.cid===13&&ab.lichSummon&&frameCount%600===0&&lichMinionList.length<3){lichMinionList.push({x:player.x+Math.random()*100-50,y:player.y+Math.random()*100-50,life:1800});}
+    if(player.cid===6&&ab.gunStorm&&frameCount%480===0){for(let i=0;i<16;i++){let a=(Math.PI*2/16)*i;bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*14,vy:Math.sin(a)*14,life:40,dmg:p,isEnemy:false,color:"#f60"});}damageTexts.push({x:player.x,y:player.y-30,text:"BULLETSTORM!",life:40,color:"#f60"});}
+    if(player.cid===17&&ab.alienCannon&&frameCount%600===0&&enemies.length>0){let tgt=enemies[0];let a=Math.atan2(tgt.y-player.y,tgt.x-player.x);bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*30,vy:Math.sin(a)*30,life:60,dmg:p*15,isEnemy:false,isPiercing:true,color:"#7fff00",size:20});damageTexts.push({x:player.x,y:player.y-30,text:"宇宙砲!",life:50,color:"#7fff00"});}
+    if(player.cid===16&&ab.archerRain&&frameCount%480===0){for(let i=0;i<10;i++){let aPow=ab.archerPow||1;bullets.push({x:Math.random()*width,y:-10,vx:0,vy:15,life:50,dmg:p*aPow,isEnemy:false,color:"#228b22",size:6,explodeOnHit:(ab.archerExplosive||false)});}damageTexts.push({x:player.x,y:player.y-30,text:"矢の雨!",life:40,color:"#228b22"});}
+    if(player.cid===14&&ab.gambRoulette&&gambRouletteCD<=0&&frameCount%480===0){gambRouletteCD=480;let roll=Math.random();if(roll<0.33){player.stats.power+=20;damageTexts.push({x:player.x,y:player.y-30,text:"ATK UP!",life:40,color:"#ff1493"});}else if(roll<0.66){player.hp=Math.min(player.maxHp,player.hp+player.maxHp*0.3);damageTexts.push({x:player.x,y:player.y-30,text:"HP回復!",life:40,color:"#ff1493"});}else{player.stats.speed+=0.5;damageTexts.push({x:player.x,y:player.y-30,text:"SPEED UP!",life:40,color:"#ff1493"});}}
+    if(player.cid===12&&ab.slashFlow&&frameCount%120===0){let dx2=targetPos.x-player.x,dy2=targetPos.y-player.y;let a=Math.atan2(dy2,dx2);for(let i=0;i<3;i++){bullets.push({x:player.x+Math.cos(a)*i*30,y:player.y+Math.sin(a)*i*30,vx:0,vy:0,life:8,dmg:p*(ab.slashRange||1)*2,isEnemy:false,size:80*(ab.slashRange||1),isMelee:true});}}
+    if(player.cid===19&&frameCount%600===0){enemies.forEach(e=>{e.hp-=p*5;damageTexts.push({x:e.x,y:e.y,text:Math.floor(p*5),life:40,color:"#ffea00"});});}
+    if(playTime<=180&&!isBossActive&&!isCrusherRaid)spawnBoss();
     if(playTime<=0)end(true);
   }
 
-  // キャラ固有スキル(120フレームごと)
   if(frameCount%120===0){
     let ninjaCount=(player.cid===1&&ab.ninjaCount)||8;
     if(player.cid===1){
-      for(let i=0;i<ninjaCount;i++){
-        let a=(Math.PI*2/ninjaCount)*i;
-        bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*12,vy:Math.sin(a)*12,life:50,dmg:p,isEnemy:false,color:"#aaa",isPiercing:(ab.ninjaPierce||false)});
-      }
-      // ニンジャv2 分身後方クナイ
-      if(ab.ninjaGhost){
-        for(let i=0;i<4;i++){
-          let a=Math.PI+(Math.PI/2)*i;
-          bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*10,vy:Math.sin(a)*10,life:40,dmg:p*0.8,isEnemy:false,color:"#555",isPiercing:(ab.ninjaPierce||false)});
-        }
-      }
+      for(let i=0;i<ninjaCount;i++){let a=(Math.PI*2/ninjaCount)*i;bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*12,vy:Math.sin(a)*12,life:50,dmg:p,isEnemy:false,color:"#aaa",isPiercing:(ab.ninjaPierce||false)});}
+      if(ab.ninjaGhost){for(let i=0;i<4;i++){let a=Math.PI+(Math.PI/2)*i;bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*10,vy:Math.sin(a)*10,life:40,dmg:p*0.8,isEnemy:false,color:"#555",isPiercing:(ab.ninjaPierce||false)});}}
     }
-    // ニンジャv4 クナイ嵐(600フレームに1回)
-    if(player.cid===1&&ab.ninjaStorm&&frameCount%600===0){
-      for(let i=0;i<32;i++){
-        let a=(Math.PI*2/32)*i;
-        bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*15,vy:Math.sin(a)*15,life:50,dmg:p*2,isEnemy:false,color:"#aaa",isPiercing:true});
-      }
-      damageTexts.push({x:player.x,y:player.y-40,text:"クナイ嵐!",life:50,color:"#aaa"});
-    }
-    if(player.cid===12){
-      let slashSize=120*(ab.slashRange||1);
-      bullets.push({x:player.x,y:player.y,vx:0,vy:0,life:10,dmg:p*4,isEnemy:false,size:slashSize,isMelee:true});
-    }
-    // サムライv2 居合い
-    if(player.cid===12&&ab.iaiActive&&frameCount%240===0&&enemies.length>0){
-      let tgt=enemies[0];let a=Math.atan2(tgt.y-player.y,tgt.x-player.x);
-      player.x+=Math.cos(a)*100;player.y+=Math.sin(a)*100;
-      bullets.push({x:player.x,y:player.y,vx:0,vy:0,life:8,dmg:p*8,isEnemy:false,size:80,isMelee:true});
-      damageTexts.push({x:player.x,y:player.y-30,text:"居合い!",life:40,color:"#cd5c5c"});
-    }
-    // エイリアン ワープ＆爆弾
-    if(player.cid===17){
-      let warpCD=ab.alienWarpCD||120;
-      if(frameCount%warpCD===0){
-        let bombPow=ab.alienBombPow||1;
-        bullets.push({x:player.x,y:player.y,vx:0,vy:0,life:30,dmg:p*3*bombPow,isEnemy:false,size:100,isBomb:true,chainBomb:(ab.alienBombChain||false)});
-        if(ab.alienClone){alienCloneList.push({x:player.x,y:player.y,life:120});}
-        player.x=Math.random()*width;player.y=Math.random()*height;
-      }
-    }
+    if(player.cid===1&&ab.ninjaStorm&&frameCount%600===0){for(let i=0;i<32;i++){let a=(Math.PI*2/32)*i;bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*15,vy:Math.sin(a)*15,life:50,dmg:p*2,isEnemy:false,color:"#aaa",isPiercing:true});}damageTexts.push({x:player.x,y:player.y-40,text:"クナイ嵐!",life:50,color:"#aaa"});}
+    if(player.cid===12){let slashSize=120*(ab.slashRange||1);bullets.push({x:player.x,y:player.y,vx:0,vy:0,life:10,dmg:p*4,isEnemy:false,size:slashSize,isMelee:true});}
+    if(player.cid===12&&ab.iaiActive&&frameCount%240===0&&enemies.length>0){let tgt=enemies[0];let a=Math.atan2(tgt.y-player.y,tgt.x-player.x);player.x+=Math.cos(a)*100;player.y+=Math.sin(a)*100;bullets.push({x:player.x,y:player.y,vx:0,vy:0,life:8,dmg:p*8,isEnemy:false,size:80,isMelee:true});damageTexts.push({x:player.x,y:player.y-30,text:"居合い!",life:40,color:"#cd5c5c"});}
+    if(player.cid===17){let warpCD=ab.alienWarpCD||120;if(frameCount%warpCD===0){let bombPow=ab.alienBombPow||1;bullets.push({x:player.x,y:player.y,vx:0,vy:0,life:30,dmg:p*3*bombPow,isEnemy:false,size:100,isBomb:true,chainBomb:(ab.alienBombChain||false)});if(ab.alienClone){alienCloneList.push({x:player.x,y:player.y,life:120});}player.x=Math.random()*width;player.y=Math.random()*height;}}
   }
 
-  // スナイパ レーザー
   if(player.cid===3){
     let sniperCD=ab.sniperCD||150;
     if(frameCount%sniperCD===0){
-      let a=Math.atan2(targetPos.y-player.y,targetPos.x-player.x);
-      let sPow=ab.sniperPow||1;
-      if(ab.sniperTriple){
-        for(let i=-1;i<=1;i++){
-          let ba=a+i*0.3;
-          bullets.push({x:player.x,y:player.y,vx:Math.cos(ba)*25,vy:Math.sin(ba)*25,life:100,dmg:p*2.5*sPow,isEnemy:false,isPiercing:true,isBounce:(ab.sniperBounce||false),color:"#0f0",size:8});
-        }
-      } else {
-        bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*25,vy:Math.sin(a)*25,life:100,dmg:p*2.5*sPow,isEnemy:false,isPiercing:true,isBounce:(ab.sniperBounce||false),color:"#0f0",size:8});
-      }
-      // スナイパv3 チャージレーザー
-      if(ab.sniperCharge&&frameCount%300===0){
-        bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*20,vy:Math.sin(a)*20,life:120,dmg:p*10*sPow,isEnemy:false,isPiercing:true,isBounce:(ab.sniperBounce||false),color:"#ff0",size:15});
-        damageTexts.push({x:player.x,y:player.y-30,text:"チャージ!",life:40,color:"#ff0"});
-      }
+      let a=Math.atan2(targetPos.y-player.y,targetPos.x-player.x);let sPow=ab.sniperPow||1;
+      if(ab.sniperTriple){for(let i=-1;i<=1;i++){let ba=a+i*0.3;bullets.push({x:player.x,y:player.y,vx:Math.cos(ba)*25,vy:Math.sin(ba)*25,life:100,dmg:p*2.5*sPow,isEnemy:false,isPiercing:true,isBounce:(ab.sniperBounce||false),color:"#0f0",size:8});}}
+      else{bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*25,vy:Math.sin(a)*25,life:100,dmg:p*2.5*sPow,isEnemy:false,isPiercing:true,isBounce:(ab.sniperBounce||false),color:"#0f0",size:8});}
+      if(ab.sniperCharge&&frameCount%300===0){bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*20,vy:Math.sin(a)*20,life:120,dmg:p*10*sPow,isEnemy:false,isPiercing:true,isBounce:(ab.sniperBounce||false),color:"#ff0",size:15});damageTexts.push({x:player.x,y:player.y-30,text:"チャージ!",life:40,color:"#ff0"});}
     }
   }
+  if(player.cid===18&&frameCount%180>140&&frameCount%4===0){let a=Math.atan2(targetPos.y-player.y,targetPos.x-player.x)+(Math.random()-0.5)*0.6;let bPow=ab.dragonBreathPow||1;bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*12,vy:Math.sin(a)*12,life:35,dmg:p*0.6*bPow,isEnemy:false,color:"#f40",size:18,isBurn:(ab.dragonBurn||false)});}
 
-  // ドラゴン ブレス
-  if(player.cid===18&&frameCount%180>140&&frameCount%4===0){
-    let a=Math.atan2(targetPos.y-player.y,targetPos.x-player.x)+(Math.random()-0.5)*0.6;
-    let bPow=ab.dragonBreathPow||1;
-    bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*12,vy:Math.sin(a)*12,life:35,dmg:p*0.6*bPow,isEnemy:false,color:"#f40",size:18,isBurn:(ab.dragonBurn||false)});
-  }
-
+  // プレイヤー移動（凍結中は動けない）
   let spd=player.stats.speed;
   if(libTimer>0)spd*=2.5;
-  let dx=targetPos.x-player.x,dy=targetPos.y-player.y;
-  player.x+=dx*0.1*(spd/4);player.y+=dy*0.1*(spd/4);
+  if(playerFrozen<=0){
+    let dx=targetPos.x-player.x,dy=targetPos.y-player.y;
+    player.x+=dx*0.1*(spd/4);player.y+=dy*0.1*(spd/4);
+  }
 
-  if(!isBossActive){
+  if(!isBossActive&&!isCrusherRaid){
     let gType=currentStage%6;
     if(frameCount%(180-currentStage*2)===0){
       if(gType===1)hazards.push({x:Math.random()*width,y:Math.random()*height,size:50+currentStage*2,life:300,type:'poison'});
@@ -957,9 +697,9 @@ function update(){
     }
   }
 
-  // 射撃
+  // 射撃（攻撃凍結中は撃てない）
   let shotInterval=(libTimer>0)?5:(player.cid===6?7:15);
-  if(frameCount%shotInterval===0&&enemies.length>0){
+  if(playerAttackFrozen<=0&&frameCount%shotInterval===0&&enemies.length>0){
     let target=enemies[0];
     let minDist=Math.hypot(player.x-target.x,player.y-target.y);
     enemies.forEach(e=>{let d=Math.hypot(player.x-e.x,player.y-e.y);if(d<minDist){minDist=d;target=e;}});
@@ -969,11 +709,7 @@ function update(){
     if(player.cid===16&&ab.archerRapid)multiCount=multiCount*2;
     for(let i=0;i<multiCount;i++){
       let a=angle+(i-(multiCount-1)/2)*0.2;
-      let blt={
-        x:player.x,y:player.y,vx:Math.cos(a)*12,vy:Math.sin(a)*12,
-        life:50,dmg:p,isEnemy:false,isWave:isHuman,isLib:(libTimer>0),
-        isHoming:(player.cid===16)
-      };
+      let blt={x:player.x,y:player.y,vx:Math.cos(a)*12,vy:Math.sin(a)*12,life:50,dmg:p,isEnemy:false,isWave:isHuman,isLib:(libTimer>0),isHoming:(player.cid===16)};
       if(player.cid===7&&ab.vampPoison)blt.poisonBullet=true;
       if(player.cid===11&&ab.ghostCurse)blt.curseBullet=true;
       if(player.cid===13&&ab.lichCurseShot)blt.curseBullet=true;
@@ -985,165 +721,90 @@ function update(){
     }
   }
 
-  if(!isBossActive){
+  // クラッシャーレイド中の雑魚追加スポーンなし
+  if(!isBossActive&&!isCrusherRaid){
     let spawnRate=Math.max(2,25-Math.floor((300-playTime)/6));
     if(frameCount%spawnRate===0)spawnEnemy();
   }
 
   orbits=[];
-  for(let i=0;i<player.stats.orbit;i++){
-    let a=(frameCount*0.1)+(i*Math.PI*2/player.stats.orbit);
-    orbits.push({x:player.x+Math.cos(a)*80,y:player.y+Math.sin(a)*80,size:10});
-  }
+  for(let i=0;i<player.stats.orbit;i++){let a=(frameCount*0.1)+(i*Math.PI*2/player.stats.orbit);orbits.push({x:player.x+Math.cos(a)*80,y:player.y+Math.sin(a)*80,size:10});}
 
   // 弾更新
   for(let i=bullets.length-1;i>=0;i--){
     let b=bullets[i];
-    if(b.isHoming&&enemies.length>0){
-      let t=enemies[0];let md=Math.hypot(b.x-t.x,b.y-t.y);
-      enemies.forEach(e=>{let d=Math.hypot(b.x-e.x,b.y-e.y);if(d<md){md=d;t=e;}});
-      let a=Math.atan2(t.y-b.y,t.x-b.x);
-      b.vx=b.vx*0.95+Math.cos(a)*0.8;b.vy=b.vy*0.95+Math.sin(a)*0.8;
-    }
-    b.x+=b.vx;b.y+=b.vy;b.life--;
-    // 壁反射(スナイパv4)
-    if(b.isBounce){
-      if(b.x<0||b.x>width){b.vx*=-1;b.x=Math.max(0,Math.min(width,b.x));}
-      if(b.y<0||b.y>height){b.vy*=-1;b.y=Math.max(0,Math.min(height,b.y));}
-    }
-    if(b.isEnemy&&Math.hypot(player.x-b.x,player.y-b.y)<player.size+(b.size||5)){
-      // パラディンv2 弾反射
-      if(player.cid===5&&ab.paladinReflect&&player.stats.orbit>0){
-        b.isEnemy=false;b.vx*=-1;b.vy*=-1;b.dmg*=0.5;
-        damageTexts.push({x:player.x,y:player.y-20,text:"REFLECT",life:25,color:"#ffd700"});
-        continue;
+    // 衝撃波弾の特別処理
+    if(b.isCrusherShock){
+      b.r=(1-b.life/30)*b.maxR;
+      b.life--;
+      if(!b.hitPlayer){
+        let d=Math.hypot(player.x-b.bossX,player.y-b.bossY);
+        if(d<b.r+player.size&&d>b.r-30){
+          b.hitPlayer=true;
+          // ノックバック
+          let ka=Math.atan2(player.y-b.bossY,player.x-b.bossX);
+          player.x+=Math.cos(ka)*80;player.y+=Math.sin(ka)*80;
+          player.x=Math.max(0,Math.min(width,player.x));player.y=Math.max(0,Math.min(height,player.y));
+          takeDamage(player.maxHp/3,false,true);
+          damageTexts.push({x:player.x,y:player.y-30,text:"衝撃波！",life:60,color:"#b0e8ff"});
+        }
       }
-      takeDamage(b.dmg);
-      bullets.splice(i,1);continue;
+      if(b.life<=0)bullets.splice(i,1);
+      continue;
+    }
+    if(b.isHoming&&enemies.length>0){let t=enemies[0];let md=Math.hypot(b.x-t.x,b.y-t.y);enemies.forEach(e=>{let d=Math.hypot(b.x-e.x,b.y-e.y);if(d<md){md=d;t=e;}});let a=Math.atan2(t.y-b.y,t.x-b.x);b.vx=b.vx*0.95+Math.cos(a)*0.8;b.vy=b.vy*0.95+Math.sin(a)*0.8;}
+    b.x+=b.vx;b.y+=b.vy;b.life--;
+    if(b.isBounce){if(b.x<0||b.x>width){b.vx*=-1;b.x=Math.max(0,Math.min(width,b.x));}if(b.y<0||b.y>height){b.vy*=-1;b.y=Math.max(0,Math.min(height,b.y));}}
+    if(b.isEnemy&&!b.isCrusherShock&&Math.hypot(player.x-b.x,player.y-b.y)<player.size+(b.size||5)){
+      if(player.cid===5&&ab.paladinReflect&&player.stats.orbit>0){b.isEnemy=false;b.vx*=-1;b.vy*=-1;b.dmg*=0.5;damageTexts.push({x:player.x,y:player.y-20,text:"REFLECT",life:25,color:"#ffd700"});continue;}
+      takeDamage(b.dmg);bullets.splice(i,1);continue;
     }
     if(b.life<=0)bullets.splice(i,1);
   }
 
-  // エイリアンクローン更新
-  for(let i=alienCloneList.length-1;i>=0;i--){
-    let cl=alienCloneList[i];cl.life--;
-    if(frameCount%30===0&&enemies.length>0){
-      let t=enemies[Math.floor(Math.random()*enemies.length)];
-      let a=Math.atan2(t.y-cl.y,t.x-cl.x);
-      bullets.push({x:cl.x,y:cl.y,vx:Math.cos(a)*10,vy:Math.sin(a)*10,life:40,dmg:p*0.5,isEnemy:false,color:"#7fff00"});
-    }
-    if(cl.life<=0)alienCloneList.splice(i,1);
-  }
-  // ゴーストクローン更新
-  for(let i=ghostCloneList.length-1;i>=0;i--){
-    let cl=ghostCloneList[i];cl.life--;
-    if(frameCount%20===0&&enemies.length>0){
-      let t=enemies[Math.floor(Math.random()*enemies.length)];
-      let a=Math.atan2(t.y-cl.y,t.x-cl.x);
-      bullets.push({x:cl.x,y:cl.y,vx:Math.cos(a)*8,vy:Math.sin(a)*8,life:35,dmg:p*0.4,isEnemy:false,color:"#e6e6fa"});
-    }
-    if(cl.life<=0)ghostCloneList.splice(i,1);
-  }
-  // リッチミニオン更新
-  for(let i=lichMinionList.length-1;i>=0;i--){
-    let m=lichMinionList[i];m.life--;
-    if(frameCount%30===0&&enemies.length>0){
-      let t=enemies[Math.floor(Math.random()*enemies.length)];
-      let a=Math.atan2(t.y-m.y,t.x-m.x);
-      bullets.push({x:m.x,y:m.y,vx:Math.cos(a)*7,vy:Math.sin(a)*7,life:50,dmg:p*0.6,isEnemy:false,color:"#808"});
-    }
-    if(m.life<=0)lichMinionList.splice(i,1);
-  }
-  // ゾンビ更新
-  for(let i=zombies.length-1;i>=0;i--){
-    let z=zombies[i];z.life--;
-    if(enemies.length>0){
-      let t=enemies[Math.floor(Math.random()*enemies.length)];
-      let a=Math.atan2(t.y-z.y,t.x-z.x);
-      z.x+=Math.cos(a)*2;z.y+=Math.sin(a)*2;
-      if(Math.hypot(z.x-t.x,z.y-t.y)<20){t.hp-=p*0.2;z.life-=5;}
-    }
-    if(z.life<=0)zombies.splice(i,1);
-  }
+  for(let i=alienCloneList.length-1;i>=0;i--){let cl=alienCloneList[i];cl.life--;if(frameCount%30===0&&enemies.length>0){let t=enemies[Math.floor(Math.random()*enemies.length)];let a=Math.atan2(t.y-cl.y,t.x-cl.x);bullets.push({x:cl.x,y:cl.y,vx:Math.cos(a)*10,vy:Math.sin(a)*10,life:40,dmg:p*0.5,isEnemy:false,color:"#7fff00"});}if(cl.life<=0)alienCloneList.splice(i,1);}
+  for(let i=ghostCloneList.length-1;i>=0;i--){let cl=ghostCloneList[i];cl.life--;if(frameCount%20===0&&enemies.length>0){let t=enemies[Math.floor(Math.random()*enemies.length)];let a=Math.atan2(t.y-cl.y,t.x-cl.x);bullets.push({x:cl.x,y:cl.y,vx:Math.cos(a)*8,vy:Math.sin(a)*8,life:35,dmg:p*0.4,isEnemy:false,color:"#e6e6fa"});}if(cl.life<=0)ghostCloneList.splice(i,1);}
+  for(let i=lichMinionList.length-1;i>=0;i--){let m=lichMinionList[i];m.life--;if(frameCount%30===0&&enemies.length>0){let t=enemies[Math.floor(Math.random()*enemies.length)];let a=Math.atan2(t.y-m.y,t.x-m.x);bullets.push({x:m.x,y:m.y,vx:Math.cos(a)*7,vy:Math.sin(a)*7,life:50,dmg:p*0.6,isEnemy:false,color:"#808"});}if(m.life<=0)lichMinionList.splice(i,1);}
+  for(let i=zombies.length-1;i>=0;i--){let z=zombies[i];z.life--;if(enemies.length>0){let t=enemies[Math.floor(Math.random()*enemies.length)];let a=Math.atan2(t.y-z.y,t.x-z.x);z.x+=Math.cos(a)*2;z.y+=Math.sin(a)*2;if(Math.hypot(z.x-t.x,z.y-t.y)<20){t.hp-=p*0.2;z.life-=5;}}if(z.life<=0)zombies.splice(i,1);}
 
   // 敵更新
   for(let ei=enemies.length-1;ei>=0;ei--){
     let e=enemies[ei];
     if(e.stunned>0){e.stunned--;continue;}
 
-    if(e.isBoss){
+    // クラッシャーボス
+    if(e.isCrusher){
+      updateCrusher(e);
+    } else if(e.isBoss){
       updateBossIrregular(e);
     } else {
       updateEnemyIrregular(e);
     }
 
-    // マグネv1 敵引き寄せ
-    if(player.cid===4&&ab.magPull&&!e.isBoss){
+    if(player.cid===4&&ab.magPull&&!e.isBoss&&!e.isCrusher){
       let d=Math.hypot(player.x-e.x,player.y-e.y);
-      if(d<player.stats.magnet*0.3){
-        let a=Math.atan2(player.y-e.y,player.x-e.x);
-        e.x+=Math.cos(a)*1.5;e.y+=Math.sin(a)*1.5;
-      }
+      if(d<player.stats.magnet*0.3){let a=Math.atan2(player.y-e.y,player.x-e.x);e.x+=Math.cos(a)*1.5;e.y+=Math.sin(a)*1.5;}
     }
 
-    if(e.isBoss){
+    // ボス行動
+    if(e.isCrusher){
+      // クラッシャーはbullets.pushで技を実行（updateCrusher内）
+    } else if(e.isBoss){
       if(e.isRaidBoss&&!e.isCharBoss){
-        // ルーキー系覚醒ボス
         if(e.rStage>=5&&frameCount%600===0)e.rLib=300;
-        if(e.rLib>0){e.rLib--;e.speed=6;}
-        else{e.speed=(e.rStage>=4)?CHAR_DATA[0].spd*0.28:CHAR_DATA[0].spd*0.7;}
-        if(e.rStage>=2&&Math.hypot(player.x-e.x,player.y-e.y)<200){
-          let ddx=player.x-e.x,ddy=player.y-e.y;
-          player.x-=ddx*0.05;player.y-=ddy*0.05;
-        }
-        if(frameCount%(e.rLib>0?10:40)===0){
-          let pwr=e.atk*(e.rStage>=4?2:1);
-          let a=Math.atan2(player.y-e.y,player.x-e.x);
-          for(let i=0;i<e.multi+(e.rStage>=1?2:0);i++){
-            let ba=a+(i-1)*0.25;
-            bullets.push({x:e.x,y:e.y,vx:Math.cos(ba)*6,vy:Math.sin(ba)*6,life:100,dmg:pwr,isEnemy:true,size:10});
-          }
-        }
+        if(e.rLib>0){e.rLib--;e.speed=6;}else{e.speed=(e.rStage>=4)?CHAR_DATA[0].spd*0.28:CHAR_DATA[0].spd*0.7;}
+        if(e.rStage>=2&&Math.hypot(player.x-e.x,player.y-e.y)<200){let ddx=player.x-e.x,ddy=player.y-e.y;player.x-=ddx*0.05;player.y-=ddy*0.05;}
+        if(frameCount%(e.rLib>0?10:40)===0){let pwr=e.atk*(e.rStage>=4?2:1);let a=Math.atan2(player.y-e.y,player.x-e.x);for(let i=0;i<e.multi+(e.rStage>=1?2:0);i++){let ba=a+(i-1)*0.25;bullets.push({x:e.x,y:e.y,vx:Math.cos(ba)*6,vy:Math.sin(ba)*6,life:100,dmg:pwr,isEnemy:true,size:10});}}
       } else if(e.isCharBoss){
-        // 各キャラ覚醒ボス
-        if(frameCount%60===0){
-          let a=Math.atan2(player.y-e.y,player.x-e.x);
-          let pwr=e.atk||10;
-          for(let i=0;i<3;i++){
-            let ba=a+(i-1)*0.3;
-            bullets.push({x:e.x,y:e.y,vx:Math.cos(ba)*7,vy:Math.sin(ba)*7,life:80,dmg:pwr,isEnemy:true,size:8});
-          }
-          if(e.targetCharStage>=3&&frameCount%180===0){
-            for(let i=0;i<8;i++){
-              let ba=(Math.PI*2/8)*i;
-              bullets.push({x:e.x,y:e.y,vx:Math.cos(ba)*5,vy:Math.sin(ba)*5,life:100,dmg:pwr*0.7,isEnemy:true,size:8});
-            }
-          }
-        }
+        if(frameCount%60===0){let a=Math.atan2(player.y-e.y,player.x-e.x);let pwr=e.atk||10;for(let i=0;i<3;i++){let ba=a+(i-1)*0.3;bullets.push({x:e.x,y:e.y,vx:Math.cos(ba)*7,vy:Math.sin(ba)*7,life:80,dmg:pwr,isEnemy:true,size:8});}if(e.targetCharStage>=3&&frameCount%180===0){for(let i=0;i<8;i++){let ba=(Math.PI*2/8)*i;bullets.push({x:e.x,y:e.y,vx:Math.cos(ba)*5,vy:Math.sin(ba)*5,life:100,dmg:pwr*0.7,isEnemy:true,size:8});}}}
       } else {
-        // 通常ステージボス
         if(frameCount%60===0){
-          let bType=e.stageIdx%5;
-          let bShots=Math.floor(e.stageIdx/3)+4;
-          let a=Math.atan2(player.y-e.y,player.x-e.x);
-          if(bType===0){
-            for(let i=0;i<bShots;i++){
-              let ba=(Math.PI*2/bShots)*i;
-              bullets.push({x:e.x,y:e.y,vx:Math.cos(ba)*5,vy:Math.sin(ba)*5,life:120,dmg:15+e.stageIdx,isEnemy:true});
-            }
-          } else if(bType===1){
-            let ba=frameCount*0.1+e.stageIdx;
-            bullets.push({x:e.x,y:e.y,vx:Math.cos(ba)*7,vy:Math.sin(ba)*7,life:100,dmg:20,isEnemy:true});
-          } else if(bType===2){
-            e.speed=15;setTimeout(()=>{if(e)e.speed=1.0;},500);
-          } else if(bType===3){
-            for(let i=0;i<3;i++){
-              let ba=a+(Math.random()-0.5);
-              bullets.push({x:e.x,y:e.y,vx:Math.cos(ba)*8,vy:Math.sin(ba)*8,life:80,dmg:15,isEnemy:true});
-            }
-          } else if(bType===4){
-            enemies.push({x:e.x,y:e.y,size:10,hp:50,maxHp:50,speed:2.5,isBoss:false,wanderAngle:Math.random()*Math.PI*2,wanderTimer:0,wanderChange:0});
-          }
+          let bType=e.stageIdx%5;let bShots=Math.floor(e.stageIdx/3)+4;let a=Math.atan2(player.y-e.y,player.x-e.x);
+          if(bType===0){for(let i=0;i<bShots;i++){let ba=(Math.PI*2/bShots)*i;bullets.push({x:e.x,y:e.y,vx:Math.cos(ba)*5,vy:Math.sin(ba)*5,life:120,dmg:15+e.stageIdx,isEnemy:true});}}
+          else if(bType===1){let ba=frameCount*0.1+e.stageIdx;bullets.push({x:e.x,y:e.y,vx:Math.cos(ba)*7,vy:Math.sin(ba)*7,life:100,dmg:20,isEnemy:true});}
+          else if(bType===2){e.speed=15;setTimeout(()=>{if(e)e.speed=1.0;},500);}
+          else if(bType===3){for(let i=0;i<3;i++){let ba=a+(Math.random()-0.5);bullets.push({x:e.x,y:e.y,vx:Math.cos(ba)*8,vy:Math.sin(ba)*8,life:80,dmg:15,isEnemy:true});}}
+          else if(bType===4){enemies.push({x:e.x,y:e.y,size:10,hp:50,maxHp:50,speed:2.5,isBoss:false,wanderAngle:Math.random()*Math.PI*2,wanderTimer:0,wanderChange:0});}
         }
       }
     }
@@ -1151,33 +812,21 @@ function update(){
     // 弾との当たり判定
     for(let bi=bullets.length-1;bi>=0;bi--){
       let b=bullets[bi];
+      if(b.isCrusherShock)continue;
       if(!b.isEnemy&&Math.hypot(e.x-b.x,e.y-b.y)<e.size+(b.size||10)){
-        if(e.isRaidBoss&&!e.isCharBoss&&e.rStage>=3){
-          e.rDodge=(e.rDodge+1)%3;
-          if(e.rDodge===0){bullets.splice(bi,1);continue;}
-        }
+        // v4ダッシュ中はノックバック無効
+        let isV4Dashing=(e.isDashing&&(e.targetCharStage===4||e.rStage===4||e.isCrusher));
+        if(e.isRaidBoss&&!e.isCharBoss&&e.rStage>=3){e.rDodge=(e.rDodge+1)%3;if(e.rDodge===0){bullets.splice(bi,1);continue;}}
         let dmg=b.dmg;
-        // ヒューマンのノックバック: ボスには1/2
-        if(b.isWave){
-          let kbMult=e.isBoss?0.5:1.5;
-          e.x+=b.vx*kbMult;e.y+=b.vy*kbMult;
-        }
+        if(b.isWave&&!isV4Dashing){let kbMult=e.isBoss?0.5:1.5;e.x+=b.vx*kbMult;e.y+=b.vy*kbMult;}
+        // クラッシャーはノックバックほぼ無効
+        if(e.isCrusher&&b.isWave){e.x+=b.vx*0.05;e.y+=b.vy*0.05;}
+        else if(e.isCrusher){}
         e.hp-=dmg;
         if(b.poisonBullet&&!e.poisoned){e.poisoned=120;e.poisonDmg=dmg*0.1;}
         if(b.curseBullet&&!e.slowed)e.slowed=60;
-        if(b.explodeOnHit){
-          enemies.forEach(oe=>{if(oe!==e&&Math.hypot(e.x-oe.x,e.y-oe.y)<60)oe.hp-=dmg*0.5;});
-          if(b.chainBomb){
-            for(let i=0;i<4;i++){
-              let a=(Math.PI/2)*i;
-              bullets.push({x:e.x,y:e.y,vx:Math.cos(a)*5,vy:Math.sin(a)*5,life:20,dmg:dmg*0.4,isEnemy:false,size:30,isBomb:true});
-            }
-          }
-        }
-        if(b.chainBolt){
-          enemies.forEach(oe=>{if(oe!==e&&Math.hypot(e.x-oe.x,e.y-oe.y)<100)oe.hp-=dmg*0.3;});
-        }
-        // 炎上
+        if(b.explodeOnHit){enemies.forEach(oe=>{if(oe!==e&&Math.hypot(e.x-oe.x,e.y-oe.y)<60)oe.hp-=dmg*0.5;});if(b.chainBomb){for(let i=0;i<4;i++){let a=(Math.PI/2)*i;bullets.push({x:e.x,y:e.y,vx:Math.cos(a)*5,vy:Math.sin(a)*5,life:20,dmg:dmg*0.4,isEnemy:false,size:30,isBomb:true});}}}
+        if(b.chainBolt){enemies.forEach(oe=>{if(oe!==e&&Math.hypot(e.x-oe.x,e.y-oe.y)<100)oe.hp-=dmg*0.3;});}
         if(b.isBurn&&!e.burning){e.burning=120;e.burnDmg=dmg*0.05;}
         damageTexts.push({x:e.x,y:e.y,text:Math.floor(dmg),life:20});
         if(!b.isPiercing&&!b.isMelee&&!b.isBomb)bullets.splice(bi,1);
@@ -1187,109 +836,43 @@ function update(){
     if(e.poisoned>0){e.poisoned--;e.hp-=e.poisonDmg||0;}
     if(e.burning>0){e.burning--;e.hp-=e.burnDmg||0;}
     if(e.slowed>0)e.slowed--;
-
-    orbits.forEach(o=>{
-      if(Math.hypot(e.x-o.x,e.y-o.y)<e.size+o.size&&frameCount%10===0){
-        e.hp-=p;
-        damageTexts.push({x:e.x,y:e.y,text:Math.floor(p),life:20});
-      }
-    });
-
-    // タンクv2 トゲ
-    if(player.cid===2&&ab.tankSpike&&Math.hypot(player.x-e.x,player.y-e.y)<120&&frameCount%10===0){
-      e.hp-=p*0.5;
-    }
+    orbits.forEach(o=>{if(Math.hypot(e.x-o.x,e.y-o.y)<e.size+o.size&&frameCount%10===0){e.hp-=p;damageTexts.push({x:e.x,y:e.y,text:Math.floor(p),life:20});}});
+    if(player.cid===2&&ab.tankSpike&&Math.hypot(player.x-e.x,player.y-e.y)<120&&frameCount%10===0){e.hp-=p*0.5;}
 
     if(e.hp<=0){
-      if(e.isBoss){enemies=[];bullets=[];end(true);return;}
-      if(player.cid===7){
-        let healAmt=(ab.vampHeal||2);
-        let prevHp=player.hp;
-        player.hp=Math.min(player.maxHp,player.hp+healAmt);
-        if(ab.vampOverheal&&player.hp===player.maxHp)vampOverhealBonus=Math.min(50,vampOverhealBonus+2);
-        if(ab.vampZombie&&Math.random()<0.15)zombies.push({x:e.x,y:e.y,life:300,size:10,color:"#808000"});
+      if(e.isBoss||e.isCrusher){
+        enemies=[];bullets=[];crusherPressureBalls=[];
+        end(true);return;
       }
+      if(player.cid===7){let healAmt=(ab.vampHeal||2);player.hp=Math.min(player.maxHp,player.hp+healAmt);if(ab.vampOverheal&&player.hp===player.maxHp)vampOverhealBonus=Math.min(50,vampOverhealBonus+2);if(ab.vampZombie&&Math.random()<0.15)zombies.push({x:e.x,y:e.y,life:300,size:10,color:"#808000"});}
       if(player.cid===10)player.berserkStacks+=1;
-      if(player.cid===13&&Math.random()<(ab.lichMagicRate||0.2)){
-        let magPow=ab.lichMagicPow||1;
-        for(let i=0;i<3;i++){
-          let a=Math.random()*Math.PI*2;
-          let blt={x:e.x,y:e.y,vx:Math.cos(a)*5,vy:Math.sin(a)*5,life:60,dmg:p*magPow,isEnemy:false,color:"#808"};
-          if(ab.lichCurseShot)blt.curseBullet=true;
-          bullets.push(blt);
-        }
-      }
-      if(player.cid===13&&ab.lichExplosion&&Math.random()<0.2){
-        enemies.forEach(oe=>{if(Math.hypot(e.x-oe.x,e.y-oe.y)<100)oe.hp-=p*2;});
-        damageTexts.push({x:e.x,y:e.y,text:"DEATH BOOM",life:40,color:"#808"});
-      }
-      if(player.cid===10&&ab.berserkBlood&&frameCount%60===0){
-        player.hp-=player.maxHp*0.02;
-        player.stats.power+=1;
-      }
-      if(player.cid===12&&ab.slashFinal&&player.hp<=player.maxHp*0.5&&Math.random()<0.1){
-        enemies.forEach(oe=>{oe.hp=0;});
-        damageTexts.push({x:player.x,y:player.y-40,text:"必殺剣!!",life:60,color:"#cd5c5c"});
-      }
-      if(player.cid===14&&ab.gambAllin&&Math.random()<0.05){
-        let bonus=500+Math.floor(Math.random()*1000);
-        scoreCoins+=bonus;
-        damageTexts.push({x:e.x,y:e.y,text:`+${bonus}C!`,life:50,color:"#ff1493"});
-      }
-      if(player.cid===14&&ab.gambJackpot&&Math.random()<0.002){
-        enemies.forEach(oe=>{oe.hp=0;});
-        scoreCoins+=5000;
-        damageTexts.push({x:player.x,y:player.y-50,text:"JACKPOT!!",life:80,color:"#ff1493"});
-      }
-      if(player.cid===9&&ab.espBlow&&frameCount%120===0){
-        enemies.forEach(oe=>{
-          let d=Math.hypot(player.x-oe.x,player.y-oe.y);
-          if(d<200){let a=Math.atan2(oe.y-player.y,oe.x-player.x);oe.x+=Math.cos(a)*100;oe.y+=Math.sin(a)*100;}
-        });
-      }
-      // ゴーストv3 クローン召喚
-      if(player.cid===11&&ab.ghostClone&&Math.random()<0.3){
-        ghostCloneList.push({x:e.x,y:e.y,life:240});
-      }
-      // ゴーストv4 憑依攻撃(撃破した敵に憑依して周囲を攻撃)
-      if(player.cid===11&&ab.ghostPossess&&Math.random()<0.1){
-        let posX=e.x,posY=e.y;
-        for(let i=0;i<8;i++){
-          let a=(Math.PI*2/8)*i;
-          bullets.push({x:posX,y:posY,vx:Math.cos(a)*8,vy:Math.sin(a)*8,life:40,dmg:p*1.5,isEnemy:false,color:"#e6e6fa"});
-        }
-        damageTexts.push({x:posX,y:posY,text:"POSSESS!",life:40,color:"#e6e6fa"});
-      }
+      if(player.cid===13&&Math.random()<(ab.lichMagicRate||0.2)){let magPow=ab.lichMagicPow||1;for(let i=0;i<3;i++){let a=Math.random()*Math.PI*2;let blt={x:e.x,y:e.y,vx:Math.cos(a)*5,vy:Math.sin(a)*5,life:60,dmg:p*magPow,isEnemy:false,color:"#808"};if(ab.lichCurseShot)blt.curseBullet=true;bullets.push(blt);}}
+      if(player.cid===13&&ab.lichExplosion&&Math.random()<0.2){enemies.forEach(oe=>{if(Math.hypot(e.x-oe.x,e.y-oe.y)<100)oe.hp-=p*2;});damageTexts.push({x:e.x,y:e.y,text:"DEATH BOOM",life:40,color:"#808"});}
+      if(player.cid===10&&ab.berserkBlood&&frameCount%60===0){player.hp-=player.maxHp*0.02;player.stats.power+=1;}
+      if(player.cid===12&&ab.slashFinal&&player.hp<=player.maxHp*0.5&&Math.random()<0.1){enemies.forEach(oe=>{oe.hp=0;});damageTexts.push({x:player.x,y:player.y-40,text:"必殺剣!!",life:60,color:"#cd5c5c"});}
+      if(player.cid===14&&ab.gambAllin&&Math.random()<0.05){let bonus=500+Math.floor(Math.random()*1000);scoreCoins+=bonus;damageTexts.push({x:e.x,y:e.y,text:`+${bonus}C!`,life:50,color:"#ff1493"});}
+      if(player.cid===14&&ab.gambJackpot&&Math.random()<0.002){enemies.forEach(oe=>{oe.hp=0;});scoreCoins+=5000;damageTexts.push({x:player.x,y:player.y-50,text:"JACKPOT!!",life:80,color:"#ff1493"});}
+      if(player.cid===9&&ab.espBlow&&frameCount%120===0){enemies.forEach(oe=>{let d=Math.hypot(player.x-oe.x,player.y-oe.y);if(d<200){let a=Math.atan2(oe.y-player.y,oe.x-player.x);oe.x+=Math.cos(a)*100;oe.y+=Math.sin(a)*100;}});}
+      if(player.cid===11&&ab.ghostClone&&Math.random()<0.3){ghostCloneList.push({x:e.x,y:e.y,life:240});}
+      if(player.cid===11&&ab.ghostPossess&&Math.random()<0.1){let posX=e.x,posY=e.y;for(let i=0;i<8;i++){let a=(Math.PI*2/8)*i;bullets.push({x:posX,y:posY,vx:Math.cos(a)*8,vy:Math.sin(a)*8,life:40,dmg:p*1.5,isEnemy:false,color:"#e6e6fa"});}damageTexts.push({x:posX,y:posY,text:"POSSESS!",life:40,color:"#e6e6fa"});}
       gems.push({x:e.x,y:e.y,val:1});
       enemies.splice(ei,1);scoreCoins+=5;
-    } else if(Math.hypot(player.x-e.x,player.y-e.y)<player.size+e.size){
+    } else if(!e.isCrusher&&Math.hypot(player.x-e.x,player.y-e.y)<player.size+e.size){
       takeDamage(e.isBoss?20:3);
+    } else if(e.isCrusher&&Math.hypot(player.x-e.x,player.y-e.y)<player.size+e.size+10&&frameCount%30===0){
+      takeDamage(10);
     }
 
-    // マグネv2 衝突ダメ
-    if(player.cid===4&&ab.magCrash){
-      for(let ei2=0;ei2<enemies.length;ei2++){
-        if(ei2!==ei&&enemies[ei2]&&Math.hypot(e.x-enemies[ei2].x,e.y-enemies[ei2].y)<e.size+enemies[ei2].size){
-          e.hp-=p*0.5;enemies[ei2].hp-=p*0.5;
-        }
-      }
-    }
+    if(player.cid===4&&ab.magCrash){for(let ei2=0;ei2<enemies.length;ei2++){if(ei2!==ei&&enemies[ei2]&&Math.hypot(e.x-enemies[ei2].x,e.y-enemies[ei2].y)<e.size+enemies[ei2].size){e.hp-=p*0.5;enemies[ei2].hp-=p*0.5;}}}
   }
 
-  // サイボーグv4 EMPバースト
-  if(player.cid===8&&ab.cyberEMP&&player.hp<=player.maxHp*0.1&&!cyberEMPUsed){
-    cyberEMPUsed=true;
-    for(let i=0;i<24;i++){
-      let a=(Math.PI*2/24)*i;
-      bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*15,vy:Math.sin(a)*15,life:60,dmg:p*5,isEnemy:false,color:"#708090",size:12});
-    }
-    damageTexts.push({x:player.x,y:player.y-40,text:"EMP BURST!!",life:60,color:"#708090"});
-  }
+  if(player.cid===8&&ab.cyberEMP&&player.hp<=player.maxHp*0.1&&!cyberEMPUsed){cyberEMPUsed=true;for(let i=0;i<24;i++){let a=(Math.PI*2/24)*i;bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*15,vy:Math.sin(a)*15,life:60,dmg:p*5,isEnemy:false,color:"#708090",size:12});}damageTexts.push({x:player.x,y:player.y-40,text:"EMP BURST!!",life:60,color:"#708090"});}
 
   for(let i=hazards.length-1;i>=0;i--){
     let h=hazards[i];
     if(h.type==='meteor'){h.x+=h.vx;h.y+=h.vy;}
     h.life--;
+    let dx=targetPos.x-player.x,dy=targetPos.y-player.y;
     if(Math.hypot(player.x-h.x,player.y-h.y)<player.size+h.size){
       if(h.type==='poison'&&frameCount%10===0)takeDamage(3,true);
       if(h.type==='slow')player.x-=dx*0.08,player.y-=dy*0.08;
@@ -1298,17 +881,12 @@ function update(){
     if(h.life<=0)hazards.splice(i,1);
   }
 
-  for(let gi=gems.length-1;gi>=0;gi--){
-    let g=gems[gi];
-    let d=Math.hypot(player.x-g.x,player.y-g.y);
-    if(d<player.stats.magnet){let a=Math.atan2(player.y-g.y,player.x-g.x);g.x+=Math.cos(a)*15;g.y+=Math.sin(a)*15;}
-    if(d<20){player.exp+=g.val;gems.splice(gi,1);if(player.exp>=player.maxExp)triggerLevelUp();}
-  }
+  for(let gi=gems.length-1;gi>=0;gi--){let g=gems[gi];let d=Math.hypot(player.x-g.x,player.y-g.y);if(d<player.stats.magnet){let a=Math.atan2(player.y-g.y,player.x-g.x);g.x+=Math.cos(a)*15;g.y+=Math.sin(a)*15;}if(d<20){player.exp+=g.val;gems.splice(gi,1);if(player.exp>=player.maxExp)triggerLevelUp();}}
 
   damageTexts.forEach((d,i)=>{d.y--;d.life--;if(d.life<=0)damageTexts.splice(i,1);});
 
-  let m=Math.floor(playTime/60),s=playTime%60;
-  document.getElementById('timer').innerText=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  let m2=Math.floor(playTime/60),s2=playTime%60;
+  document.getElementById('timer').innerText=`${String(m2).padStart(2,'0')}:${String(s2).padStart(2,'0')}`;
   document.getElementById('exp-bar').style.width=(player.exp/player.maxExp*100)+"%";
 }
 
@@ -1316,54 +894,99 @@ function draw(){
   ctx.fillStyle=(currentStage%4===0&&!isBossActive)?"rgba(0,0,0,0.9)":"rgba(5,5,15,0.4)";
   ctx.fillRect(0,0,width,height);
 
-  hazards.forEach(h=>{
-    if(h.type==='poison')ctx.fillStyle=`rgba(100,0,100,${h.life/300*0.5})`;
-    if(h.type==='slow')ctx.fillStyle=`rgba(0,50,100,${h.life/200*0.4})`;
-    if(h.type==='meteor')ctx.fillStyle=`rgba(255,100,0,0.8)`;
-    ctx.beginPath();ctx.arc(h.x,h.y,h.size,0,Math.PI*2);ctx.fill();
-  });
+  // ===== 津波エフェクト =====
+  if(crusherTsunami>0){
+    let prog=1-crusherTsunami/180;
+    ctx.fillStyle=`rgba(100,200,255,${0.55*Math.sin(prog*Math.PI)})`;
+    ctx.fillRect(0,0,width,height);
+    ctx.fillStyle='rgba(180,240,255,0.18)';
+    for(let w=0;w<3;w++){
+      let wX=(frameCount*4+w*180)%width;
+      ctx.beginPath();ctx.arc(wX,height*0.4,120,0,Math.PI*2);ctx.fill();
+    }
+  }
+  // ===== 地震エフェクト =====
+  if(crusherEarthquake>0){
+    let intens=crusherEarthquake/180;
+    ctx.strokeStyle=`rgba(255,200,50,${0.6*intens})`;
+    ctx.lineWidth=3;
+    for(let cx2=0;cx2<width;cx2+=80){
+      for(let cy=0;cy<height;cy+=80){
+        ctx.beginPath();
+        ctx.moveTo(cx2+Math.random()*20-10,cy);
+        ctx.lineTo(cx2+Math.random()*20-10,cy+80);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx2,cy+Math.random()*20-10);
+        ctx.lineTo(cx2+80,cy+Math.random()*20-10);
+        ctx.stroke();
+      }
+    }
+  }
 
+  hazards.forEach(h=>{if(h.type==='poison')ctx.fillStyle=`rgba(100,0,100,${h.life/300*0.5})`;if(h.type==='slow')ctx.fillStyle=`rgba(0,50,100,${h.life/200*0.4})`;if(h.type==='meteor')ctx.fillStyle=`rgba(255,100,0,0.8)`;ctx.beginPath();ctx.arc(h.x,h.y,h.size,0,Math.PI*2);ctx.fill();});
   gems.forEach(g=>{ctx.fillStyle="#0f8";ctx.beginPath();ctx.arc(g.x,g.y,4,0,Math.PI*2);ctx.fill();});
-
   zombies.forEach(z=>{ctx.fillStyle="#808000";ctx.beginPath();ctx.arc(z.x,z.y,8,0,Math.PI*2);ctx.fill();});
   alienCloneList.forEach(cl=>{ctx.fillStyle="rgba(127,255,0,0.4)";ctx.beginPath();ctx.arc(cl.x,cl.y,12,0,Math.PI*2);ctx.fill();});
   ghostCloneList.forEach(cl=>{ctx.fillStyle="rgba(230,230,250,0.3)";ctx.beginPath();ctx.arc(cl.x,cl.y,12,0,Math.PI*2);ctx.fill();});
   lichMinionList.forEach(m=>{ctx.fillStyle="rgba(128,0,128,0.6)";ctx.beginPath();ctx.arc(m.x,m.y,10,0,Math.PI*2);ctx.fill();});
 
+  // 気圧弾描画（透明・白縁）
+  crusherPressureBalls.forEach(pb=>{
+    ctx.save();
+    ctx.beginPath();ctx.arc(pb.x,pb.y,pb.r,0,Math.PI*2);
+    ctx.fillStyle='rgba(200,240,255,0.06)';ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.85)';ctx.lineWidth=4;ctx.stroke();
+    ctx.restore();
+  });
+
   bullets.forEach(b=>{
-    if(b.isMelee||b.isBomb){
-      ctx.fillStyle=b.isMelee?"rgba(255,255,255,0.3)":"rgba(128,255,0,0.4)";
-      ctx.beginPath();ctx.arc(b.x,b.y,b.size,0,Math.PI*2);ctx.fill();
-    } else if(b.isEnemy){
-      ctx.fillStyle="#f0f";ctx.beginPath();ctx.arc(b.x,b.y,b.size||5,0,Math.PI*2);ctx.fill();
-    } else if(b.isWave){
-      ctx.fillStyle=b.isLib?"#f00":"#0af";
-      ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));
-      ctx.beginPath();ctx.ellipse(0,0,15,5,0,0,Math.PI*2);ctx.fill();ctx.restore();
-    } else {
-      ctx.fillStyle=b.color||"#ff0";ctx.beginPath();ctx.arc(b.x,b.y,b.size||5,0,Math.PI*2);ctx.fill();
+    if(b.isCrusherShock){
+      // 衝撃波：白い輪
+      ctx.save();
+      ctx.beginPath();ctx.arc(b.bossX,b.bossY,b.r,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(255,255,255,${b.life/30})`;ctx.lineWidth=10;ctx.stroke();
+      ctx.restore();return;
     }
+    if(b.isMelee||b.isBomb){ctx.fillStyle=b.isMelee?"rgba(255,255,255,0.3)":"rgba(128,255,0,0.4)";ctx.beginPath();ctx.arc(b.x,b.y,b.size,0,Math.PI*2);ctx.fill();}
+    else if(b.isEnemy){ctx.fillStyle="#f0f";ctx.beginPath();ctx.arc(b.x,b.y,b.size||5,0,Math.PI*2);ctx.fill();}
+    else if(b.isWave){ctx.fillStyle=b.isLib?"#f00":"#0af";ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.beginPath();ctx.ellipse(0,0,15,5,0,0,Math.PI*2);ctx.fill();ctx.restore();}
+    else{ctx.fillStyle=b.color||"#ff0";ctx.beginPath();ctx.arc(b.x,b.y,b.size||5,0,Math.PI*2);ctx.fill();}
   });
 
   orbits.forEach(o=>{ctx.fillStyle="#0ff";ctx.beginPath();ctx.arc(o.x,o.y,o.size,0,Math.PI*2);ctx.fill();});
 
   let ab=getAwakeBonus(player.cid);
   let ghostInvisActive=(player.cid===11&&ab.ghostInvis&&ghostInvisTimer>0);
-
-  if(player.cid===0&&saveData.rookieAwakeStage>=2){
-    ctx.strokeStyle="rgba(255,255,255,0.3)";ctx.lineWidth=2;
-    ctx.beginPath();ctx.arc(player.x,player.y,150,0,Math.PI*2);ctx.stroke();
-  }
+  if(player.cid===0&&saveData.rookieAwakeStage>=2){ctx.strokeStyle="rgba(255,255,255,0.3)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(player.x,player.y,150,0,Math.PI*2);ctx.stroke();}
 
   enemies.forEach(e=>{
-    if(e.isRaidBoss){
+    if(e.isCrusher){
+      // クラッシャーボス描画
+      let hpR=e.hp/e.maxHp;
+      // ボス本体（白に近い水色）
+      let grd=ctx.createRadialGradient(e.x,e.y,0,e.x,e.y,e.size);
+      grd.addColorStop(0,'#e8f8ff');grd.addColorStop(0.5,'#b0e8ff');grd.addColorStop(1,'#70c8f0');
+      ctx.fillStyle=grd;
+      ctx.beginPath();ctx.arc(e.x,e.y,e.size,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle=e.phase>=3?'#ff4466':(e.phase===2?'#ffcc00':'white');
+      ctx.lineWidth=5;ctx.stroke();
+      // HPバー
+      ctx.fillStyle='#300';ctx.fillRect(e.x-e.size,e.y-e.size-18,e.size*2,10);
+      ctx.fillStyle=e.phase>=3?'#f44':'#7df';ctx.fillRect(e.x-e.size,e.y-e.size-18,e.size*2*hpR,10);
+      ctx.fillStyle='#b0e8ff';ctx.font='bold 22px sans-serif';ctx.textAlign='center';
+      ctx.fillText('CRUSHER',e.x,e.y+e.size+28);
+      let ph=['','第１形態','第２形態','第３形態'][e.phase]||'';
+      ctx.font='16px sans-serif';ctx.fillStyle='#fff';ctx.fillText(ph,e.x,e.y+e.size+48);
+      // ダッシュ中のエフェクト
+      if(e.isDashing){ctx.strokeStyle='rgba(180,220,255,0.5)';ctx.lineWidth=20;ctx.beginPath();ctx.arc(e.x,e.y,e.size+10,0,Math.PI*2);ctx.stroke();}
+    } else if(e.isRaidBoss){
       if(e.rStage>=2||e.isCharBoss){ctx.strokeStyle="rgba(255,255,255,0.2)";ctx.beginPath();ctx.arc(e.x,e.y,200,0,Math.PI*2);ctx.stroke();}
       let rLib=e.rLib||0;
-      if(rLib>0){
-        let grad=ctx.createLinearGradient(e.x,e.y-e.size,e.x,e.y+e.size);
-        grad.addColorStop(0,"black");grad.addColorStop(1,"red");ctx.fillStyle=grad;
-      } else {ctx.fillStyle=e.color||"#f00";}
+      if(rLib>0){let grad=ctx.createLinearGradient(e.x,e.y-e.size,e.x,e.y+e.size);grad.addColorStop(0,"black");grad.addColorStop(1,"red");ctx.fillStyle=grad;}else{ctx.fillStyle=e.color||"#f00";}
       ctx.beginPath();ctx.arc(e.x,e.y,e.size,0,Math.PI*2);ctx.fill();
+      // v4ダッシュ中エフェクト
+      if(e.isDashing){ctx.strokeStyle='rgba(255,100,0,0.7)';ctx.lineWidth=15;ctx.beginPath();ctx.arc(e.x,e.y,e.size+8,0,Math.PI*2);ctx.stroke();}
       ctx.strokeStyle="white";ctx.lineWidth=4;ctx.stroke();
       ctx.fillStyle="red";ctx.fillRect(e.x-e.size,e.y-e.size-15,e.size*2*(e.hp/e.maxHp),8);
       ctx.fillStyle="#ff00ff";ctx.font="bold 24px sans-serif";ctx.textAlign="center";
@@ -1378,14 +1001,13 @@ function draw(){
     }
   });
 
-  if(libTimer>0){
-    ctx.fillStyle="rgba(255,0,0,0.2)";ctx.beginPath();ctx.arc(player.x,player.y,50,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="red";
-  } else {
-    ctx.fillStyle=ghostInvisActive?"rgba(230,230,250,0.3)":player.color;
-  }
+  // プレイヤー描画
+  if(libTimer>0){ctx.fillStyle="rgba(255,0,0,0.2)";ctx.beginPath();ctx.arc(player.x,player.y,50,0,Math.PI*2);ctx.fill();ctx.fillStyle="red";}
+  else{ctx.fillStyle=ghostInvisActive?"rgba(230,230,250,0.3)":player.color;}
   ctx.beginPath();ctx.arc(player.x,player.y,player.size,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle="white";ctx.lineWidth=2;ctx.stroke();
+  // 凍結中エフェクト
+  if(playerFrozen>0){ctx.strokeStyle='rgba(100,200,255,0.7)';ctx.lineWidth=5;ctx.beginPath();ctx.arc(player.x,player.y,player.size+5,0,Math.PI*2);ctx.stroke();}
   ctx.fillStyle="#f00";ctx.fillRect(player.x-25,player.y+22,50,6);
   ctx.fillStyle="#0f0";ctx.fillRect(player.x-25,player.y+22,50*(player.hp/player.maxHp),6);
 
@@ -1399,25 +1021,28 @@ function end(win){
   document.getElementById('ui-layer').classList.add('hidden');
   document.getElementById('screen-result').classList.remove('hidden');
   let titleEl=document.getElementById('res-title');
+  let gotFrags=false;
   titleEl.innerText=win?"STAGE CLEAR!!":"GAME OVER";titleEl.style.color=win?"#0f0":"#f00";
   if(win){
     scoreCoins+=1000;
-    if(isRaidMode){
+    if(isCrusherRaid){
+      // クラッシャーレイドクリア→フラグメント+100
+      scoreCoins+=3000;
+      saveData.fragments=(saveData.fragments||0)+100;
+      gotFrags=true;
+      titleEl.innerText="CRUSHER DEFEATED!!";titleEl.style.color="#7df";
+    } else if(isRaidMode){
       scoreCoins+=5000;
-      if(raidTargetCharId===0){
-        saveData.rookieAwakeStage=raidTargetRookieStage;
-        titleEl.innerText=`${ROOKIE_NAMES[raidTargetRookieStage]} AWAKENED!`;titleEl.style.color="#ff00ff";
-      } else {
-        let prevSt=getCharAwakeStage(raidTargetCharId);
-        if(raidTargetCharStage>prevSt){
-          saveData.charAwakeStage[raidTargetCharId]=raidTargetCharStage;
-          let newName=CHAR_AWAKE[raidTargetCharId]?CHAR_AWAKE[raidTargetCharId].names[raidTargetCharStage]:CHAR_DATA[raidTargetCharId].name+` v${raidTargetCharStage}`;
-          titleEl.innerText=`${newName} AWAKENED!`;titleEl.style.color="#ff00ff";
-        }
-      }
+      if(raidTargetCharId===0){saveData.rookieAwakeStage=raidTargetRookieStage;titleEl.innerText=`${ROOKIE_NAMES[raidTargetRookieStage]} AWAKENED!`;titleEl.style.color="#ff00ff";}
+      else{let prevSt=getCharAwakeStage(raidTargetCharId);if(raidTargetCharStage>prevSt){saveData.charAwakeStage[raidTargetCharId]=raidTargetCharStage;let newName=CHAR_AWAKE[raidTargetCharId]?CHAR_AWAKE[raidTargetCharId].names[raidTargetCharStage]:CHAR_DATA[raidTargetCharId].name+` v${raidTargetCharStage}`;titleEl.innerText=`${newName} AWAKENED!`;titleEl.style.color="#ff00ff";}}
     } else if(saveData.unlockedStage===currentStage&&currentStage<30){saveData.unlockedStage++;}
   }
-  saveData.coins+=scoreCoins;saveGame();document.getElementById('res-coins').innerText=scoreCoins;
+  saveData.coins+=scoreCoins;saveGame();
+  document.getElementById('res-coins').innerText=scoreCoins;
+  if(gotFrags){
+    document.getElementById('res-frags').style.display='block';
+    document.getElementById('res-frag-count').innerText='+100';
+  }
 }
 
 function loop(){if(state==='PLAYING'){update();draw();requestAnimationFrame(loop);}}
