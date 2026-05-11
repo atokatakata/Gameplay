@@ -777,7 +777,7 @@ function spawnBoss(){
     // ★ステージ30：シャンドラ
     spawnShandraBoS();
   } else {
-    if(currentStage>=15&&Math.random()<0.01&&!isCrusherRaid){
+    if(currentStage===15&&Math.random()<0.01&&!isCrusherRaid){
       enemies=[];hazards=[];isBossActive=false;
       isCrusherRaid=true;spawnCrusherBoss();return;
     }
@@ -888,7 +888,7 @@ function update(){
   } else if(libCool>0){libCool--;document.getElementById('liberation-ui').innerText="";}
 
   if(frameCount%60===0){
-    if(!isBossActive&&!isCrusherRaid&&!isRaidMode&&currentStage>=15&&playTime>180&&Math.random()<0.01){
+    if(!isBossActive&&!isCrusherRaid&&!isRaidMode&&currentStage===15&&playTime>180&&Math.random()<0.01){
       isCrusherRaid=true;spawnCrusherBoss();
     }
     playTime--;scoreCoins+=(player.cid===14?4:2);
